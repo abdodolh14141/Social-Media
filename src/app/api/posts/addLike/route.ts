@@ -11,6 +11,13 @@ interface RequestBody {
   userEmail: string;
 }
 
+// Define post type
+interface Post {
+  likedBy: string[];
+  Like: number;
+  save: () => Promise<void>;
+}
+
 // Response messages
 const MESSAGES = {
   INVALID_POST_ID: "Invalid postId format",
@@ -48,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Find the post by ID
-    const post = await Posts.findById(postId);
+    const post: Post | null = await Posts.findById(postId);
     if (!post) {
       return NextResponse.json(
         { success: false, message: MESSAGES.POST_NOT_FOUND },
@@ -65,23 +72,22 @@ export async function POST(req: NextRequest) {
         (email: string) => email !== userEmail
       );
       post.Like = Math.max((post.Like || 0) - 1, 0);
-      await post.save();
-
-      return NextResponse.json(
-        { success: true, message: MESSAGES.LIKE_REMOVED, liked: false },
-        { status: 200 }
-      );
     } else {
       // Add like
       post.likedBy.push(userEmail);
       post.Like = (post.Like || 0) + 1;
-      await post.save();
-
-      return NextResponse.json(
-        { success: true, message: MESSAGES.LIKE_ADDED, liked: true },
-        { status: 200 }
-      );
     }
+
+    await post.save();
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: userAlreadyLiked ? MESSAGES.LIKE_REMOVED : MESSAGES.LIKE_ADDED,
+        liked: !userAlreadyLiked,
+      },
+      { status: 200 }
+    );
   } catch (error: unknown) {
     console.error(
       "Server error:",

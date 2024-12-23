@@ -28,7 +28,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/app/_app.jsx",
-    "src/context/Provider.tsx"
+    "src/context/Provider.tsx",
+    "src/app/components/Posts/HeroHome/HeroForm.jsx"
   ],
   "exclude": ["node_modules"]
 }

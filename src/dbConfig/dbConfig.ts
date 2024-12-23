@@ -17,7 +17,10 @@ export async function Connect(): Promise<void> {
     await mongoose.connect(mongoUrl, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      tls: false, // Enables TLS/SSL
+      tlsAllowInvalidCertificates: false, // Allow invalid certificates only if necessary
     });
+
     isConnected = true;
     console.log("Successfully connected to the database.");
   } catch (error) {

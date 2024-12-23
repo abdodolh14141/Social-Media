@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LoginWithGoogle from "../components/buttons/LoginWithGoogle";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { getSession } from "next-auth/react";
 
 interface FormData {
   email: string;
@@ -40,6 +41,21 @@ export default function LoginPage() {
       toast.error("An error occurred. Please try again.");
     }
   };
+
+  useEffect(() => {
+    const resCheckLogin = async () => {
+      try {
+        const resSession = await getSession();
+        if (resSession?.user) {
+          router.replace("/");
+        }
+      } catch (error: any) {
+        console.log(error);
+        toast.error(error);
+      }
+    };
+    resCheckLogin();
+  }, [router]);
 
   return (
     <div className="flex justify-center items-center min-h-screen shadow-2xl">

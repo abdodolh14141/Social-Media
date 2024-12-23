@@ -1,78 +1,102 @@
+"use server";
+
 import { Connect } from "@/dbConfig/dbConfig";
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
-import Followers from "@/app/models/followers";
+import User from "@/app/models/userModel";
+
+// Utility function to handle follow/unfollow logic
+async function handleFollowAction(FollowByEmail: string, AccountId: string) {
+  // Check if the target user exists and update follow status
+  const update = {
+    $addToSet: { FollowBy: FollowByEmail },
+    $inc: { Follow: 1 },
+  };
+  const options = { new: true };
+
+  const targetUser = await User.findByIdAndUpdate(AccountId, update, options);
+
+  if (!targetUser) {
+    return {
+      success: false,
+      message: "Target user not found.",
+      status: 404,
+    };
+  }
+
+  // Ensure FollowBy is an array
+  const followByList = targetUser.FollowBy || [];
+
+  const isFollowing = followByList.includes(FollowByEmail);
+
+  if (isFollowing) {
+    // Unfollow logic
+    await User.findByIdAndUpdate(
+      AccountId,
+      {
+        $pull: { FollowBy: FollowByEmail },
+        $inc: { Follow: -1 },
+      },
+      options
+    );
+
+    return {
+      success: true,
+      message: "Successfully unfollowed the user.",
+      action: "unfollow",
+      status: 200,
+    };
+  } else {
+    // Follow logic
+    return {
+      success: true,
+      message: "Successfully followed the user.",
+      action: "follow",
+      status: 200,
+    };
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     // Connect to the database
     await Connect();
 
-    // Extract and validate the required fields from the request body
-    const { FollowById, AccountId } = await req.json();
-    if (
-      !mongoose.Types.ObjectId.isValid(FollowById) ||
-      !mongoose.Types.ObjectId.isValid(AccountId)
-    ) {
+    // Parse request body
+    const {
+      FollowByEmail,
+      AccountId,
+    }: { FollowByEmail: string; AccountId: string } = await req.json();
+
+    // Validate input data
+    if (!FollowByEmail || !AccountId) {
       return NextResponse.json(
         {
           success: false,
-          message: "Missing required fields: FollowById or AccountId",
+          message: "Missing required fields: FollowByEmail or AccountId.",
         },
         { status: 400 }
       );
     }
 
-    // Check if the target user's followers data exists
-    const existingFollow = await Followers.findOne({ idUser: AccountId });
+    // Handle follow/unfollow action
+    const result = await handleFollowAction(FollowByEmail, AccountId);
 
-    if (!existingFollow) {
-      return NextResponse.json(
-        { success: false, message: "User's follow data not found" },
-        { status: 404 }
-      );
-    }
-
-    // Determine follow/unfollow action based on current state
-    const isFollowing = existingFollow.FollowBy.includes(FollowById);
-
-    if (isFollowing) {
-      // If already following, remove FollowById to unfollow
-      existingFollow.FollowBy = existingFollow.FollowBy.filter(
-        (id: string) => id !== FollowById
-      );
-      existingFollow.Follow -= 1;
-
-      await existingFollow.save();
-
-      return NextResponse.json(
-        {
-          success: true,
-          message: "Successfully unfollowed the user",
-          action: "unfollow",
-        },
-        { status: 200 }
-      );
-    } else {
-      // If not following, add FollowById to follow
-      existingFollow.FollowBy.push(FollowById);
-      existingFollow.Follow += 1;
-
-      await existingFollow.save();
-
-      return NextResponse.json(
-        {
-          success: true,
-          message: "Successfully followed the user",
-          action: "follow",
-        },
-        { status: 200 }
-      );
-    }
+    return NextResponse.json(
+      {
+        success: result.success,
+        message: result.message,
+        action: result.action,
+      },
+      { status: result.status }
+    );
   } catch (error) {
     console.error("Server error:", error);
+
     return NextResponse.json(
-      { success: false, message: "Server error. Please try again." },
+      {
+        success: false,
+        message: "An internal server error occurred. Please try again.",
+      },
       { status: 500 }
     );
   }

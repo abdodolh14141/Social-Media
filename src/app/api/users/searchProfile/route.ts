@@ -10,10 +10,10 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const reqBody = await req.json();
-    const { id: inputId } = reqBody;
+    const { id: IdUser } = reqBody;
 
     // Validate ID
-    if (!inputId) {
+    if (!IdUser) {
       return NextResponse.json(
         { success: false, message: "User ID not provided" },
         { status: 400 }
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user exists
-    const existUser = await User.findOne({ _id: inputId });
+    const existUser = await User.findOne({ _id: IdUser });
     if (!existUser) {
       return NextResponse.json(
         { success: false, message: "User not found" },

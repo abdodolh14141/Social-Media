@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     // Search for the user
     const existUser = await User.find({ Name: bodyJson.name });
 
-    if (existUser.length === 0) {
+    if (!existUser) {
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 404 }

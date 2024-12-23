@@ -4,12 +4,13 @@ import { useState } from "react";
 import { getSession } from "next-auth/react";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
-import { CldUploadButton } from "next-cloudinary";
+import { CldUploadWidget } from "next-cloudinary";
 
 interface NewPost {
   title: string;
   content: string;
   ImageId: string;
+  imageUrl: string;
 }
 
 export default function NewPost() {
@@ -17,6 +18,7 @@ export default function NewPost() {
     title: "",
     content: "",
     ImageId: "",
+    imageUrl: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -28,17 +30,19 @@ export default function NewPost() {
     setNewPostForm((prevForm) => ({ ...prevForm, [id]: value }));
   };
 
+  // Validate form inputs
+  const validateForm = (): boolean => {
+    const { title, content, ImageId } = newPostForm;
+    if (!ImageId) return toast.error("Please upload an image."), false;
+    if (!title) return toast.error("Please enter a title."), false;
+    if (!content) return toast.error("Please enter the content."), false;
+    return true;
+  };
+
   // Handle form submission
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const { title, content, ImageId } = newPostForm;
-
-    // Validate inputs
-    if (!title || !content || !ImageId) {
-      toast.error("All fields are required, including an image.");
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setLoading(true);
@@ -51,20 +55,19 @@ export default function NewPost() {
 
       // Submit post data
       const response = await axios.post("/api/posts/addNewPost", {
-        title,
-        content,
-        ImageId,
+        title: newPostForm.title,
+        content: newPostForm.content,
+        ImageId: newPostForm.ImageId,
         authorEmail: session.user.email,
       });
 
       if (response.status === 201 || response.data.success) {
         toast.success("Post created successfully!");
-        setNewPostForm({ title: "", content: "", ImageId: "" });
+        setNewPostForm({ title: "", content: "", ImageId: "", imageUrl: "" });
       } else {
         toast.error(response.data.message || "Failed to create the post.");
       }
     } catch (error: any) {
-      console.error("Error creating post:", error);
       toast.error(
         error.response?.data?.message || "An unexpected error occurred."
       );
@@ -74,27 +77,28 @@ export default function NewPost() {
   };
 
   // Handle image upload
-  const handleUpload = (result: any) => {
-    if (result.event === "success") {
-      setNewPostForm((prevForm) => ({
-        ...prevForm,
-        ImageId: result.info.secure_url,
-      }));
-      toast.success("Image uploaded successfully!");
-    } else {
-      toast.error("Image upload failed. Please try again.");
-    }
+  const handleUploadSuccess = (info: {
+    public_id: string;
+    secure_url: string;
+  }) => {
+    const { public_id, secure_url } = info;
+    setNewPostForm((prevForm) => ({
+      ...prevForm,
+      ImageId: public_id,
+      imageUrl: secure_url,
+    }));
+    toast.success("Image uploaded successfully!");
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container max-w-8xl mx-auto px-4 py-8">
       <Toaster />
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         Create a New Post
       </h1>
       <form
         onSubmit={handlePostSubmit}
-        className="bg-white shadow-md rounded-lg p-6"
+        className="bg-white shadow-md rounded-lg p-6 max-w-5xl"
         aria-label="Create a New Post"
       >
         {/* Post Title */}
@@ -112,7 +116,6 @@ export default function NewPost() {
             onChange={handleChange}
             placeholder="Enter your post title"
             className="w-full p-2 mt-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
           />
         </div>
 
@@ -131,7 +134,6 @@ export default function NewPost() {
             placeholder="Write your post content here..."
             className="w-full p-2 mt-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={5}
-            required
           ></textarea>
         </div>
 
@@ -140,23 +142,40 @@ export default function NewPost() {
           <label className="block text-sm font-medium text-gray-700">
             Upload Image
           </label>
-          <CldUploadButton
+          <CldUploadWidget
             uploadPreset="hg1ghiyh"
-            onUpload={handleUpload}
-            className="mt-2 text-blue-600 underline cursor-pointer"
+            onSuccess={({ info }: any) => handleUploadSuccess(info)}
           >
-            Upload Image
-          </CldUploadButton>
-          {newPostForm.ImageId && (
-            <div className="mt-4">
+            {({ open }) => (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  open();
+                }}
+                className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              >
+                Upload Image
+              </button>
+            )}
+          </CldUploadWidget>
+
+          {newPostForm.imageUrl && (
+            <div className="mt-4 ">
               <img
-                src={newPostForm.ImageId}
+                src={newPostForm.imageUrl}
                 alt="Uploaded preview"
                 className="max-w-xs rounded-md shadow-sm"
               />
-              <p className="text-sm text-green-600 mt-2">
-                Image uploaded successfully!
-              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setNewPostForm({ ...newPostForm, ImageId: "", imageUrl: "" })
+                }
+                className="mt-2 px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Remove Image
+              </button>
             </div>
           )}
         </div>
@@ -164,9 +183,16 @@ export default function NewPost() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={
+            loading ||
+            !newPostForm.title ||
+            !newPostForm.content ||
+            !newPostForm.ImageId
+          }
           className={`w-full py-2 px-4 rounded-md text-white font-semibold ${
-            loading ? "bg-gray-500" : "bg-blue-600 hover:bg-blue-700"
+            loading
+              ? "bg-gray-500 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
           }`}
         >
           {loading ? "Submitting..." : "Submit Post"}

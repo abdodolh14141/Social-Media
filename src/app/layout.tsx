@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "./components/Header";
+import Header from "./components/nav/Header";
+import LastNav from "./components/lastNav/headerLast";
 import Provider from "@/context/Provider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
@@ -23,12 +24,13 @@ export default async function RootLayout({
       />
       <body>
         <main>
-          <div className="h-lvh mx-auto p-6">
+          <div className="h-lvh mx-auto p-2">
             <GoogleOAuthProvider clientId={process.env.GOOGLE_CLIENT_ID}>
               <Provider>
                 <Header />
 
                 {children}
+                <LastNav />
               </Provider>
             </GoogleOAuthProvider>
           </div>

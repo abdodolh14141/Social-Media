@@ -2,8 +2,9 @@ import mongoose from "mongoose";
 
 const postSchema = new mongoose.Schema({
   IdUserCreated: {
-    type: String,
-    required: [true, "Id Is required"],
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: [true, "Id is required"],
   },
   Title: {
     type: String,
@@ -13,7 +14,7 @@ const postSchema = new mongoose.Schema({
   Content: {
     type: String,
     required: [true, "Content is required"],
-    lowercase: true, // Store content in lowercase
+    lowercase: true,
   },
   AuthorName: {
     type: String,
@@ -27,7 +28,7 @@ const postSchema = new mongoose.Schema({
     default: 0,
   },
   likedBy: {
-    type: [String], // Array to store user IDs who liked this post
+    type: [String],
     ref: "User",
     default: [],
   },
@@ -37,7 +38,6 @@ const postSchema = new mongoose.Schema({
   },
 });
 
-// Use existing model if it exists, otherwise create a new one
 const Posts = mongoose.models.Posts || mongoose.model("Posts", postSchema);
 
 export default Posts;

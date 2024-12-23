@@ -4,13 +4,13 @@ import { useState, FormEvent } from "react";
 import LoginWithGoogle from "../components/buttons/LoginWithGoogle";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 // Define the type for form data
 interface FormData {
   email: string;
   username: string;
-  age: string;
+  age: string; // Use string for compatibility with input value
   password: string;
   gender: string;
 }
@@ -26,6 +26,7 @@ export default function Register() {
 
   const router = useRouter();
 
+  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -34,13 +35,20 @@ export default function Register() {
     }));
   };
 
+  // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     const { email, username, age, password, gender } = formData;
 
+    // Basic validation
     if (!email || !username || !password || !gender || !age) {
       toast.error("All fields are required.");
+      return;
+    }
+
+    if (+age < 18 || +age > 59) {
+      toast.error("Age must be between 18 and 59.");
       return;
     }
 
@@ -51,17 +59,20 @@ export default function Register() {
         toast.success("Account created successfully! You can now log in.");
         router.push("/login");
       }
-    } catch (err) {
-      toast.error("Error registering account. Please try again.");
+    } catch (error) {
+      const err = error as AxiosError;
+      const message =
+        err.response?.data || "An error occurred during registration.";
+      toast.error(`Error: ${message}`);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen shadow-2xl">
+    <div className="flex justify-center items-center min-h-screen">
       <Toaster />
-      <div className="p-6 max-w-5xl w-full bg-white rounded-lg shadow-md">
-        <h1 className="text-4xl font-bold text-center mb-4">Register</h1>
-        <p className="text-center mb-6 text-gray-500">Create your account</p>
+      <div className="p-8 max-w-6xl w-full bg-white rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold text-center mb-6">Register</h1>
+        <p className="text-center mb-4 text-gray-600">Create your account</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
@@ -70,6 +81,7 @@ export default function Register() {
             value={formData.email}
             onChange={handleChange}
             className="w-full p-3 border rounded-md focus:outline-none focus:border-blue-500"
+            aria-label="Email"
             required
           />
 
@@ -80,8 +92,10 @@ export default function Register() {
             value={formData.username}
             onChange={handleChange}
             className="w-full p-3 border rounded-md focus:outline-none focus:border-blue-500"
+            aria-label="Username"
             required
           />
+
           <input
             type="password"
             name="password"
@@ -89,8 +103,10 @@ export default function Register() {
             value={formData.password}
             onChange={handleChange}
             className="w-full p-3 border rounded-md focus:outline-none focus:border-blue-500"
+            aria-label="Password"
             required
           />
+
           <input
             type="number"
             name="age"
@@ -100,9 +116,11 @@ export default function Register() {
             value={formData.age}
             onChange={handleChange}
             className="w-full p-3 border rounded-md focus:outline-none focus:border-blue-500"
+            aria-label="Age"
             required
           />
-          <div className="flex justify-center items-center space-x-4 text-lg">
+
+          <div className="flex justify-center space-x-4 text-lg">
             <label>
               <input
                 type="radio"
@@ -126,6 +144,7 @@ export default function Register() {
               Female
             </label>
           </div>
+
           <button
             type="submit"
             className="w-full p-3 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 transition duration-200"
@@ -133,11 +152,12 @@ export default function Register() {
             Register
           </button>
         </form>
+
+        <div className="mt-6">
+          <LoginWithGoogle />
+        </div>
         <div className="flex items-center justify-center mt-4">
           <span className="text-gray-500">or</span>
-        </div>
-        <div className="mt-4">
-          <LoginWithGoogle />
         </div>
       </div>
     </div>

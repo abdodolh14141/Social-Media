@@ -8,7 +8,6 @@ const CommentSchema = new mongoose.Schema({
   CommentUserId: {
     type: String,
     required: true,
-    unique: true,
   },
   TextComment: {
     type: String,

@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react"; // Import useSession from next-auth
 import Link from "next/link";
-import Logout from "./buttons/logoutButton";
+import Logout from "../buttons/logoutButton";
 import { useEffect, useState } from "react";
 
 export default function Header() {
@@ -21,10 +21,10 @@ export default function Header() {
   return (
     <>
       <header
-        className="bg-white border-b flex justify-between py- opacity-40 rounded-lg
-      p-4"
+        className="bg-white border-b flex sticky z-10 justify-between opacity-40 rounded-lg
+      p-2"
       >
-        <div className="max-w-4xl flex justify-center">
+        <div className="max-w-3xl flex justify-center">
           <div className="flex gap-6">
             <Link href="/" className="text-2xl">
               LinkList
