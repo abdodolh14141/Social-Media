@@ -28,7 +28,9 @@ export default function HeroForm() {
   return (
     <>
       <Toaster />
-      <header className="shadow-md top-0 text-white bg-gray-500 rounded-xl">
+      <Account />
+
+      <header className="shadow-md top-0 text-white rounded-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
           <h1 className="text-2xl font-bold text-white">SocialApp</h1>
         </div>
@@ -37,14 +39,12 @@ export default function HeroForm() {
       <main className="max-w-7xl mx-auto p-6">
         {isAuthenticated ? (
           <>
-            <Account />
-            <br />
             <NewPost />
           </>
         ) : (
           <div className="text-center my-4">
-            <h2 className="text-xl font-bold text-gray-800">
-              Login to React Social
+            <h2 className="text-xl text-white font-bold m-5">
+              Login to React World And Social
             </h2>
           </div>
         )}

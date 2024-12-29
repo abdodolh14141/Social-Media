@@ -98,7 +98,7 @@ export default function NewPost() {
       </h1>
       <form
         onSubmit={handlePostSubmit}
-        className="bg-white shadow-md rounded-lg p-6 max-w-5xl"
+        className="bg-white shadow-md rounded-lg p-6 max-w-5xl hover:scale-110 transition duration-300 ease-in-out mx-auto"
         aria-label="Create a New Post"
       >
         {/* Post Title */}

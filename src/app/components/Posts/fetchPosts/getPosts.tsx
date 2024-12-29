@@ -163,7 +163,7 @@ export default function GetPosts() {
               </em>
             </p>
 
-            <h3 className="text-2xl font-bold text-center text-gray-800 mb-2">
+            <h3 className="text-3xl font-bold text-center text-gray-800 mb-2">
               {post.Title}
             </h3>
 
@@ -180,7 +180,7 @@ export default function GetPosts() {
               </div>
             )}
 
-            <p className="text-gray-700 text-center">{post.Content}</p>
+            <p className="text-2xl text-gray-700 text-center">{post.Content}</p>
 
             <div className="flex items-center justify-between mt-4">
               <button
@@ -241,11 +241,11 @@ export default function GetPosts() {
                             <img
                               src="https://img.icons8.com/color/48/test-account.png"
                               alt="icon User"
-                              className="hover:scale-125 hover:bg-green-600"
+                              className="p-1 rounded-lg hover:scale-125 hover:bg-white"
                             />{" "}
                           </Link>
                         </p>
-                        <p className="m-5 text-gray-300">
+                        <p className="text-lg m-5 text-gray-300 font-bold">
                           Text : {comment.TextComment}
                         </p>
                       </div>
