@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { toast, Toaster } from "sonner";
 
 export default function Contact() {
@@ -9,30 +9,37 @@ export default function Contact() {
     email: "",
     message: "",
   });
-  const report = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const { email, message } = formReport;
-      const res = await axios.post("/api/users/report", {
-        email,
-        message,
-      });
-      if (res.status === 200) {
-        toast.success("Success Send Message");
-        setReport({ email: "", message: "" });
-      } else {
-        toast.error("Failed Submit Report");
+
+  const report = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+        const { email, message } = formReport;
+        const res = await axios.post("/api/users/report", {
+          email,
+          message,
+        });
+        if (res.status === 200) {
+          toast.success("Success Send Message");
+          setReport({ email: "", message: "" });
+        } else {
+          toast.error("Failed Submit Report");
+        }
+      } catch (error: any) {
+        toast.error(
+          "An error occurred while sending the message. Please try again later."
+        );
       }
-    } catch (error: any) {
-      toast.error(error);
-    }
-  };
+    },
+    [formReport]
+  );
+
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center py-5 rounded-lg px-4 sm:px-6 lg:px-8 bg-opacity-75 bg-gray-100 shadow-xl transition duration-500 ease-in-out hover:bg-gray-200">
       <Toaster />
-      <div className="w-full max-w-6xl bg-white shadow-lg rounded-lg p-8">
+      <div className="w-full max-w-6xl rounded-lg p-8">
         {/* Heading */}
-        <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">
+        <h1 className="text-4xl font-bold text-center text-gray-900 mb-8">
           Get in Touch
         </h1>
 
@@ -50,9 +57,14 @@ export default function Contact() {
               type="email"
               id="email"
               placeholder="Enter Your Email"
-              onChange={(e) =>
-                setReport({ ...formReport, email: e.target.value })
-              }
+              onChange={(e) => {
+                const email = e.target.value;
+                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                  setReport({ ...formReport, email });
+                } else {
+                  toast.error("Invalid email format");
+                }
+              }}
               required
               className="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-3"
             />

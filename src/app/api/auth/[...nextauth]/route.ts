@@ -77,7 +77,7 @@ const authOptions: NextAuthOptions = {
             email: existingUser.Email,
             name: existingUser.Name,
           };
-        } catch (error) {
+        } catch (error: any) {
           throw new Error(`Authorization failed: ${error.message}`);
         }
       },
@@ -97,7 +97,7 @@ const authOptions: NextAuthOptions = {
             user = new User({
               Email: profile.email,
               Name: profile.name,
-              Password: "******", // Placeholder for Google accounts
+              Password: `${profile.email}`, // Placeholder for Google accounts
             });
 
             await user.save();

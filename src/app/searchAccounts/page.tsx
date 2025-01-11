@@ -5,7 +5,7 @@ import { toast, Toaster } from "sonner";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { FormEvent } from "react";
+import debounce from "lodash.debounce";
 
 interface Account {
   _id: string;
@@ -16,68 +16,77 @@ interface Account {
 export default function Account() {
   const [name, setName] = useState("");
   const [searchResults, setSearchResults] = useState<Account[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleNameSearch = useCallback(
-    async (event: FormEvent) => {
-      event.preventDefault();
-      if (!name.trim()) {
-        toast.error("Please enter a username.");
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce(async (searchTerm: string) => {
+      if (!searchTerm.trim()) {
+        setSearchResults([]);
         return;
       }
 
       setLoading(true);
-      setSearchResults([]);
-      setSelectedAccount(null);
 
       try {
         const { data, status } = await axios.post("/api/users/searchUsers", {
-          name,
+          name: searchTerm.trim(),
         });
-        if (status === 200 && data.user.length > 0) {
+
+        if (status === 200 && data.user?.length > 0) {
           setSearchResults(data.user);
-          toast.success("Accounts found successfully.");
         } else {
+          setSearchResults([]);
           toast.error("No accounts found.");
         }
-      } catch (error) {
-        const errorMessage =
-          axios.isAxiosError(error) && error.response?.data?.message
-            ? error.response?.data?.message
-            : "An unexpected error occurred.";
-        toast.error(errorMessage);
+      } catch (error: any) {
+        toast.error("An error occurred during the search.");
       } finally {
         setLoading(false);
       }
-    },
-    [name]
+    }, 500),
+    []
   );
 
-  const fetchSession = useCallback(async () => {
-    try {
-      const session = await getSession();
-      if (session?.user?.name) setName(session.user.name);
-    } catch {
-      toast.error("An error occurred while fetching the session.");
-    }
-  }, []);
+  // Trigger search manually
+  const handleSearch = async () => {
+    debouncedSearch.cancel(); // Cancel any ongoing debounce to avoid conflicts
+    await debouncedSearch(name);
+  };
 
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setName(value);
+    debouncedSearch(value);
+  };
+
+  // Fetch session on component mount
   useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
+    const fetchSession = async () => {
+      try {
+        const session = await getSession();
+        if (session?.user?.name) setName(session.user.name);
+      } catch {
+        toast.error("An error occurred while fetching session data.");
+      }
+    };
 
+    fetchSession();
+
+    // Cleanup debounce on unmount
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  // Render search results
   const mappedAccounts = useMemo(
     () =>
       searchResults.map((account) => (
         <Link href={`/ProfileUser/${account._id}`} key={account._id} passHref>
-          <li
-            className={`p-4 border rounded-md cursor-pointer hover:bg-blue-50 transition-all duration-300 ${
-              selectedAccount?._id === account._id ? "bg-blue-100" : ""
-            }`}
-            onClick={() => setSelectedAccount(account)}
-          >
-            <p className="flex justify-start items-center font-bold text-lg p-2 text-gray-800">
+          <li className="p-4 border rounded-md cursor-pointer hover:bg-blue-50 transition-all duration-300">
+            <p className="flex items-center font-bold text-lg text-gray-800">
               <img
                 src="https://img.icons8.com/color/48/test-account.png"
                 alt="User Icon"
@@ -88,46 +97,54 @@ export default function Account() {
           </li>
         </Link>
       )),
-    [searchResults, selectedAccount]
+    [searchResults]
   );
 
   return (
-    <div className="max-w-5xl m-3 mx-auto p-6 bg-white rounded-xl shadow-lg hover:scale-125 transition duration-300">
-      <Toaster />
-      <form onSubmit={handleNameSearch} className="text-center w-full">
-        <h2 className="mb-4 text-xl text-gray-600">
-          Enter a username to search
-        </h2>
-        <div className="flex flex-col items-center">
-          <input
-            type="text"
-            placeholder="Username"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="border rounded-md p-2 mb-4 w-full max-w-md text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            className="bg-blue-500 w-full text-white py-2 px-4 rounded-md max-w-md hover:bg-blue-600 transition duration-200 flex items-center justify-center"
-            disabled={loading}
-          >
-            {loading ? (
-              <div className="loader border-t-transparent"></div>
-            ) : (
-              "Search for Account"
-            )}
-          </button>
-        </div>
-      </form>
+    <>
+      <div className="max-w-7xl mx-auto p-6 bg-white rounded-xl shadow-lg">
+        <Toaster />
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          className="text-center w-full"
+        >
+          <h2 className="mb-4 text-2xl text-gray-600">Search for a Accounts</h2>
+          <div className="flex flex-col items-center">
+            <input
+              type="text"
+              placeholder="Enter username"
+              onChange={handleInputChange}
+              className="border rounded-md p-2 mb-4 w-full max-w-7xl text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={handleSearch}
+              className="bg-blue-500 text-white py-2 px-4 rounded-md w-full max-w-7xl hover:bg-blue-600 transition duration-200 flex items-center justify-center"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="loader border-t-transparent" />
+              ) : (
+                "Search"
+              )}
+            </button>
+          </div>
+        </form>
 
-      {searchResults.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-2xl font-semibold text-center mb-4 text-gray-700">
-            Select an Account
-          </h3>
-          <ul className="space-y-4">{mappedAccounts}</ul>
-        </div>
-      )}
-    </div>
+        {loading && (
+          <p className="text-blue-500 mt-2 text-center">Searching...</p>
+        )}
+
+        {searchResults.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-2xl font-semibold text-center mb-4 text-gray-700">
+              Select an Account
+            </h3>
+            <ul className="space-y-4">{mappedAccounts}</ul>
+          </div>
+        )}
+      </div>{" "}
+      <hr className="my-8 border-t-8 border-black rounded-md shadow-md w-full" />
+    </>
   );
 }

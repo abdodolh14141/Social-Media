@@ -5,17 +5,11 @@ import Link from "next/link";
 export default function LastNav() {
   return (
     <>
-      <div className="bg-slate-800 p-2 fixed bottom-0 left-0 w-full shadow-lg">
+      <div className="bg-slate-800 p-1 fixed  bottom-0 left-0 w-full shadow-lg">
         <nav className="flex items-center gap-5 justify-around">
           <Link
+            className="hover:scale-110 p-2 hover:bg-red-600 rounded-lg"
             href={"/about"}
-            className="hover:scale-110 p-2 hover:bg-red-600 rounded-lg"
-          >
-            About
-          </Link>
-          <Link
-            className="hover:scale-110 p-2 hover:bg-red-600 rounded-lg"
-            href={"/contact"}
           >
             Contact
           </Link>

@@ -1,5 +1,6 @@
 "use server";
 
+import Followers from "@/app/models/followers";
 import User from "@/app/models/userModel";
 import { Connect } from "@/dbConfig/dbConfig";
 import { NextRequest, NextResponse } from "next/server";
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
 
     // Check if user exists
     const existUser = await User.findOne({ _id: IdUser });
+    const followers = await Followers.find({ idUser: IdUser });
     if (!existUser) {
       return NextResponse.json(
         { success: false, message: "User not found" },
@@ -30,7 +32,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, message: "User found successfully", user: existUser },
+      {
+        success: true,
+        message: "User found successfully",
+        user: existUser,
+        Followers: followers,
+      },
       { status: 200 }
     );
   } catch (error) {

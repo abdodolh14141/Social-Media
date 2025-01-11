@@ -3,6 +3,7 @@ import User from "@/app/models/userModel";
 import { Connect } from "@/dbConfig/dbConfig";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
+import Followers from "@/app/models/followers";
 
 // Define the interface for UserData
 interface UserData {
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
       Email: email,
       Age: age,
       Gender: gender,
+      Followers: [],
       Password: hashPass,
     });
 

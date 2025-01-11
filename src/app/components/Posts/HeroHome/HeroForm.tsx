@@ -7,6 +7,7 @@ import GetPosts from "../fetchPosts/getPosts";
 import { getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Account from "@/app/searchAccounts/page";
+import About from "@/app/about/page";
 
 export default function HeroForm() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -30,26 +31,26 @@ export default function HeroForm() {
       <Toaster />
       <Account />
 
-      <header className="shadow-md top-0 text-white rounded-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
-          <h1 className="text-2xl font-bold text-white">SocialApp</h1>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto p-6">
+      <main className="w-full mx-auto p-6">
         {isAuthenticated ? (
           <>
             <NewPost />
           </>
         ) : (
-          <div className="text-center my-4">
-            <h2 className="text-xl text-white font-bold m-5">
-              Login to React World And Social
+          <div className="text-center my-20">
+            <h2 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-700 via-purple-500 to-pink-500 shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out m-5">
+              Login to React World And Social And Add Posts And Comments And
+              Like Posts And Follow Users And More
             </h2>
           </div>
         )}
 
-        <GetPosts />
+        <div>
+          <GetPosts />
+        </div>
+        <div className="mt-20">
+          <About />
+        </div>
       </main>
     </>
   );

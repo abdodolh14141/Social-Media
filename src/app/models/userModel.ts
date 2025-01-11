@@ -17,6 +17,16 @@ const userSchema = new mongoose.Schema({
     min: 18,
     max: 59,
   },
+  Followers: {
+    type: [String],
+    ref: "User",
+    default: [],
+  },
+  Follow: { type: Number, default: 0 },
+  UrlImageProfile: {
+    type: String,
+  },
+
   Gender: {
     type: String,
     default: "Unknown",

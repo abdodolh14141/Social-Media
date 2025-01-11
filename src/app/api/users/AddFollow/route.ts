@@ -4,58 +4,6 @@ import { Connect } from "@/dbConfig/dbConfig";
 import { NextRequest, NextResponse } from "next/server";
 import User from "@/app/models/userModel";
 
-// Utility function to handle follow/unfollow logic
-async function handleFollowAction(FollowByEmail: string, AccountId: string) {
-  // Check if the target user exists and update follow status
-  const update = {
-    $addToSet: { FollowBy: FollowByEmail },
-    $inc: { Follow: 1 },
-  };
-  const options = { new: true };
-
-  const targetUser = await User.findByIdAndUpdate(AccountId, update, options);
-
-  if (!targetUser) {
-    return {
-      success: false,
-      message: "Target user not found.",
-      status: 404,
-    };
-  }
-
-  // Ensure FollowBy is an array
-  const followByList = targetUser.FollowBy || [];
-
-  const isFollowing = followByList.includes(FollowByEmail);
-
-  if (isFollowing) {
-    // Unfollow logic
-    await User.findByIdAndUpdate(
-      AccountId,
-      {
-        $pull: { FollowBy: FollowByEmail },
-        $inc: { Follow: -1 },
-      },
-      options
-    );
-
-    return {
-      success: true,
-      message: "Successfully unfollowed the user.",
-      action: "unfollow",
-      status: 200,
-    };
-  } else {
-    // Follow logic
-    return {
-      success: true,
-      message: "Successfully followed the user.",
-      action: "follow",
-      status: 200,
-    };
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     // Connect to the database
@@ -78,16 +26,57 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Handle follow/unfollow action
-    const result = await handleFollowAction(FollowByEmail, AccountId);
+    // Check if the target user exists
+    const targetUser = await User.findById(AccountId);
+    if (!targetUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Target user not found.",
+        },
+        { status: 404 }
+      );
+    }
+
+    // Ensure Followers is an array
+    const followers = targetUser.Followers || [];
+
+    // Check if the user is already following
+    const isFollowing = followers.includes(FollowByEmail);
+
+    // Update follow/unfollow status
+    let action: "follow" | "unfollow";
+    if (isFollowing) {
+      // Unfollow
+      await User.findByIdAndUpdate(
+        AccountId,
+        {
+          $pull: { Followers: FollowByEmail },
+          $inc: { Follow: -1 },
+        },
+        { new: true }
+      );
+      action = "unfollow";
+    } else {
+      // Follow
+      await User.findByIdAndUpdate(
+        AccountId,
+        {
+          $addToSet: { Followers: FollowByEmail },
+          $inc: { Follow: 1 },
+        },
+        { new: true }
+      );
+      action = "follow";
+    }
 
     return NextResponse.json(
       {
-        success: result.success,
-        message: result.message,
-        action: result.action,
+        success: true,
+        message: `Successfully ${action}ed the user.`,
+        action,
       },
-      { status: result.status }
+      { status: 200 }
     );
   } catch (error) {
     console.error("Server error:", error);

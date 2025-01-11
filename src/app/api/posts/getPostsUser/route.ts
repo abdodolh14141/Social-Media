@@ -25,13 +25,13 @@ export async function POST(req: NextRequest) {
     const userPosts = await Posts.find({ IdUserCreated: IdUser });
 
     // Check if any posts exist for the user
-    if (!userPosts || userPosts.length === 0) {
+    if (userPosts.length === 0) {
       return NextResponse.json(
         {
-          success: false,
+          success: true,
           message: "No posts found for this user.",
         },
-        { status: 404 }
+        { status: 200 }
       );
     }
 

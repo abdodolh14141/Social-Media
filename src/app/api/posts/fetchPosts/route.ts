@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const posts = await Posts.find<PostType>({}).sort({ createdAt: -1 }).lean();
+    if (posts.length === 0) {
+      return NextResponse.json({ success: true, posts });
+    }
     return NextResponse.json({ success: true, posts });
   } catch (error) {
     console.error("Error in GET posts handler:", error);
