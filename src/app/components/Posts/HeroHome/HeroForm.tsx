@@ -37,11 +37,12 @@ export default function HeroForm() {
             <NewPost />
           </>
         ) : (
-          <div className="text-center my-20">
-            <h2 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-700 via-purple-500 to-pink-500 shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out m-5">
+          <div className="my-5">
+            <h2 className="text-2xl text-center text-white font-bold m-3 p-3">
               Login to React World And Social And Add Posts And Comments And
               Like Posts And Follow Users And More
-            </h2>
+            </h2>{" "}
+            <hr className="my-8 border-t-8 border-black rounded-md shadow-md w-full" />
           </div>
         )}
 

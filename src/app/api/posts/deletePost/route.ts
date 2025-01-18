@@ -1,9 +1,8 @@
 import Posts from "@/app/models/posts";
 import { Connect } from "@/dbConfig/dbConfig";
-import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PUT(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const { postId }: any = await req.json();
 
   if (!postId) {

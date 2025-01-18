@@ -1,11 +1,13 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, {
+  NextAuthOptions,
+  User as NextAuthUser,
+  Session as NextAuthSession,
+} from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { Connect } from "@/dbConfig/dbConfig";
 import bcrypt from "bcrypt";
 import User from "@/app/models/userModel";
-import { redirect } from "next/navigation";
-import { NextResponse } from "next/server";
 
 interface UserCredentials {
   email: string;
@@ -22,6 +24,22 @@ const checkEnvironmentVariables = () => {
     );
   }
 };
+
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name: string;
+    };
+  }
+
+  interface JWT {
+    id: string;
+    email: string;
+    name: string;
+  }
+}
 
 const authOptions: NextAuthOptions = {
   jwt: {
@@ -72,8 +90,9 @@ const authOptions: NextAuthOptions = {
             throw new Error("Invalid email or password.");
           }
 
+          // Return the user object with its ID for JWT
           return {
-            id: existingUser._id.toString(),
+            id: existingUser._id,
             email: existingUser.Email,
             name: existingUser.Name,
           };
@@ -113,16 +132,22 @@ const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id = user.id; // Add user ID to JWT
         token.email = user.email;
         token.name = user.name;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({
+      session,
+      token,
+    }: {
+      session: NextAuthSession;
+      token: any;
+    }) {
       if (token) {
         session.user = {
-          id: token.id,
+          id: token.id, // Include user ID in the session object
           email: token.email,
           name: token.name,
         };
@@ -131,7 +156,7 @@ const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/login",
+    signIn: "/login", // Redirect to a custom login page
   },
 };
 

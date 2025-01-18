@@ -8,7 +8,6 @@ import Link from "next/link";
 import { CldImage } from "next-cloudinary";
 import icon from "../../../../../public/iconAccount.png";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 
 interface Post {
   _id: string;
@@ -27,12 +26,18 @@ interface Comment {
   TextComment: string;
 }
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
 export default function GetPosts() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
-  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
 
   // Fetch posts and comments
   const fetchPostsAndComments = useCallback(async () => {
@@ -56,9 +61,39 @@ export default function GetPosts() {
     }
   }, []);
 
+  // Delete post by ID
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const res = await axios.delete(`/api/posts/fetchPosts`, {
+        data: { idPost: postId }, // Pass the post ID in the `data` key for DELETE
+      });
+
+      if (res.status === 200) {
+        toast.success("Post deleted successfully!");
+        await fetchPostsAndComments(); // Refresh the posts list after deletion
+      } else {
+        toast.error(
+          res.data.message || "Failed to delete the post. Please try again."
+        );
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message || "An unexpected error occurred.";
+      toast.error(errorMessage);
+    }
+  };
+
+  // Fetch posts and comments on initial render
+
   useEffect(() => {
+    const resSession = async () => {
+      const session = await getSession();
+      setUser(session?.user || null);
+    };
+    resSession();
     fetchPostsAndComments();
-  }, [fetchPostsAndComments, router]);
+  }, [fetchPostsAndComments]);
 
   const formattedPosts = useMemo(
     () =>
@@ -70,6 +105,8 @@ export default function GetPosts() {
     [posts]
   );
 
+  // Group comments by post ID
+
   const commentsByPostId = useMemo(() => {
     return comments.reduce((acc, comment) => {
       if (!acc[comment.idPost]) {
@@ -79,6 +116,8 @@ export default function GetPosts() {
       return acc;
     }, {} as { [key: string]: Comment[] });
   }, [comments]);
+
+  // Handle like post
 
   const handleLike = async (postId: string) => {
     try {
@@ -110,6 +149,8 @@ export default function GetPosts() {
     }
   };
 
+  // Handle add comment
+
   const handleAddComment = async (e: React.FormEvent, postId: string) => {
     e.preventDefault();
 
@@ -129,14 +170,13 @@ export default function GetPosts() {
       });
 
       if (res.status === 200) {
-        setComments((prev) => [
-          ...prev,
-          {
-            idPost: postId,
-            CommentUserId: session?.user?.email || "",
-            TextComment: newComment[postId],
-          },
-        ]);
+        const newCommentData: Comment = {
+          idPost: postId,
+          CommentUserId: session.user.email || "",
+          TextComment: newComment[postId],
+        };
+
+        setComments((prev) => [...prev, newCommentData]);
         setNewComment((prev) => ({ ...prev, [postId]: "" }));
         toast.success("Comment added successfully!");
       } else {
@@ -152,12 +192,12 @@ export default function GetPosts() {
   return (
     <>
       <Toaster />
-      <div className="container mx-auto p-5 max-w-7xl">
+      <div className="container mx-auto p-5 max-w-5xl">
         <h1 className="text-center text-4xl font-bold text-white mb-5">
           Posts
         </h1>
         {loading ? (
-          <div className="flex justify-center items-center">
+          <div className="flex justify-center items-center m-5">
             <p className="text-white text-xl font-semibold">Loading...</p>
             <div className="spinner ml-4 border-t-4 border-white rounded-full w-8 h-8 animate-spin"></div>
           </div>
@@ -166,9 +206,24 @@ export default function GetPosts() {
             No Found Posts
           </h3>
         ) : (
-          <div className="grid grid-row-1 sm:grid-row-2 lg:grid-row-3 gap-6">
+          <div
+            className="grid grid-row-1
+           sm:grid-row-2 lg:grid-row-3 gap-6 "
+          >
             {formattedPosts.map((post) => (
-              <div key={post._id} className="p-6 rounded-lg shadow-lg">
+              <div
+                key={post._id}
+                className="p-6 rounded-lg shadow-lg bg-gray-800"
+              >
+                {user && user.id === post.IdUserCreated && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePost(post._id)}
+                    className="bg-red-500 text-white p-2 rounded mb-4 cursor-pointer hover:bg-red-600 transition"
+                  >
+                    Delete
+                  </button>
+                )}
                 <p className="text-white text-xl mb-2">
                   <em>
                     Created By{" "}
@@ -184,26 +239,20 @@ export default function GetPosts() {
                   {post.Title}
                 </h3>
                 {post.PublicImage && (
-                  <div className="mb-4">
-                    <CldImage
-                      src={post.PublicImage}
-                      alt="Post Image"
-                      width="650"
-                      height="300"
-                      className="rounded-lg shadow-md w-full"
-                      style={{ objectFit: "cover" }}
-                    />
-                  </div>
+                  <CldImage
+                    src={post.PublicImage}
+                    alt="Post Image"
+                    width="650"
+                    height="300"
+                    className="rounded-lg shadow-md w-full mb-4"
+                  />
                 )}
                 <p className="text-white text-xl text-center mb-4">
                   {post.Content}
                 </p>
                 <button
                   onClick={() => handleLike(post._id)}
-                  className={`p-2 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition ${
-                    loading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  disabled={loading}
+                  className="p-2 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition"
                 >
                   Like: {post.Like}
                 </button>
@@ -221,28 +270,27 @@ export default function GetPosts() {
                       }))
                     }
                     placeholder="Write a comment"
-                    className="w-full border rounded-md px-3 py-2 mb-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full border rounded-md px-3 py-2 mb-2"
                   />
                   <button
                     type="submit"
-                    className={`w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition ${
-                      loading ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                    disabled={loading}
+                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
                   >
                     Submit Comment
                   </button>
                 </form>
-                <div className="mt-4">
+                <div className="mt-4" id={post._id}>
                   <h4 className="text-white font-semibold mb-2">Comments:</h4>
                   {commentsByPostId[post._id]?.length ? (
                     commentsByPostId[post._id].map((comment, idx) => (
                       <div
-                        key={idx}
+                        key={comment.idPost + idx}
                         className="bg-gray-700 text-white p-4 rounded-lg mb-2"
                       >
                         <Link
-                          href={`/ProfileUser/${comment.CommentUserId}`}
+                          href={`/ProfileUser/${
+                            comment.CommentUserId.split("_")[0]
+                          }`}
                           className="text-blue-400 hover:underline"
                         >
                           <div className="flex items-center">
@@ -253,7 +301,6 @@ export default function GetPosts() {
                               alt="User Icon"
                               className="mr-2 rounded-full"
                             />
-                            <span>{comment.CommentUserId}</span>
                           </div>
                         </Link>
                         <p>{comment.TextComment}</p>

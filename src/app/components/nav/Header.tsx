@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react"; // Import useSession from next-auth
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Logout from "../buttons/logoutButton";
 import { useCallback, useEffect, useState } from "react";
@@ -8,17 +8,17 @@ import axios from "axios";
 import { toast, Toaster } from "sonner";
 
 export default function Header() {
-  const { data: session, status } = useSession(); // Get session data using useSession
-  const [name, setName] = useState("");
-  const [getIdUser, setUserId] = useState("");
+  const { data: session, status } = useSession(); // Session data
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const getIdAccount = useCallback(async () => {
-    const userName = session?.user?.name;
+  // Fetch the user ID based on the session
+  const fetchUserId = useCallback(async () => {
+    if (!session?.user?.name) return;
     setLoading(true);
     try {
       const res = await axios.post("/api/users/searchUsers", {
-        name: userName,
+        name: session.user.name,
       });
       if (res.data.success) {
         setUserId(res.data.user[0]._id);
@@ -31,39 +31,50 @@ export default function Header() {
     }
   }, [session?.user?.name]);
 
-  // Set the name when the session changes
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      setName(session?.user?.name as string);
-      getIdAccount();
-    } else {
-      setName(""); // Clear name if not authenticated
+      fetchUserId();
     }
-  }, [session, status, getIdAccount]); // Dependency array
+  }, [status, session, fetchUserId]);
 
   return (
     <>
       <Toaster />
-      <header className="border-b flex sticky z-10 justify-between rounded-lg p-2">
-        <div className="max-w-3xl flex text-white justify-center">
-          <div className="flex gap-6">
-            <Link href="/" className="text-2xl">
-              LinkList
+      <header className="flex items-center justify-between bg-gray-800 text-white rounded-md p-2 sticky top-0 z-10 shadow-md">
+        {/* Logo and Navigation Links */}
+        <div className="flex items-center gap-6">
+          <Link
+            href="/"
+            className="text-2xl font-semibold hover:scale-105 transition-transform"
+          >
+            LinkList
+          </Link>
+          <nav className="flex items-center gap-4 text-lg">
+            <Link
+              href="/about"
+              className="hover:text-blue-400 transition-colors"
+            >
+              About
             </Link>
-            <nav className="flex items-center gap-4 text-white text-lg hover:scale-105">
-              <Link href="/about">About</Link>
-            </nav>
-          </div>
+          </nav>
         </div>
 
-        <nav className="flex items-center gap-4 text-sm text-white">
+        {/* Website Icon */}
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/2065/2065157.png"
+          alt="Website Icon"
+          className="w-10 h-10"
+        />
+
+        {/* User Actions */}
+        <nav className="flex items-center gap-4">
           {loading ? (
-            <span className="font-bold text-lg">Loading...</span>
+            <span className="text-gray-300">Loading...</span>
           ) : session?.user ? (
             <>
               <Link
-                className="font-bold text-black p-1 rounded-lg text-lg hover:scale-110"
-                href={`/ProfileUser/${getIdUser}`}
+                href={`/ProfileUser/${userId}`}
+                className="text-lg font-bold bg-blue-500 px-3 py-1 rounded-lg hover:scale-105 transition-transform"
               >
                 My Account
               </Link>
@@ -71,8 +82,18 @@ export default function Header() {
             </>
           ) : (
             <>
-              <Link href="/login">Sign In</Link>
-              <Link href="/signin">Create Account</Link>
+              <Link
+                href="/login"
+                className="hover:text-blue-400 transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signin"
+                className="bg-blue-500 px-3 py-1 rounded-lg text-white hover:scale-105 transition-transform"
+              >
+                Create Account
+              </Link>
             </>
           )}
         </nav>

@@ -19,6 +19,7 @@ interface ProfileData {
   age: number | null;
   Like: number;
   profileImage?: string;
+  Followers: string[];
 }
 
 interface Comment {
@@ -40,6 +41,8 @@ export default function ProfileUser() {
 
   const { id: userId } = useParams();
 
+  // Check if the user is the owner of the account
+
   const fetchProfileData = useCallback(async () => {
     setLoadingProfile(true);
     try {
@@ -58,6 +61,7 @@ export default function ProfileUser() {
           age: user.Age || null,
           Like: user.Likes || 0,
           profileImage: user.UrlImageProfile || "",
+          Followers: user.Followers || [],
         });
         setIsFollowing(user.isUserFollowing);
       } else {
@@ -70,6 +74,7 @@ export default function ProfileUser() {
     }
   }, [userId]);
 
+  // Comments by post ID
   const commentsByPostId = useMemo(() => {
     return comments.reduce((acc, comment) => {
       if (!acc[comment.idPost]) {
@@ -110,6 +115,8 @@ export default function ProfileUser() {
     }
   };
 
+  // Add a comment to a post
+
   const handleAddComment = async (e: React.FormEvent, postId: string) => {
     e.preventDefault();
 
@@ -149,6 +156,22 @@ export default function ProfileUser() {
     }
   };
 
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const res = await axios.post("/api/posts/deletePost", { postId });
+      if (res.status === 200) {
+        setPosts((prev) => prev.filter((post) => post._id !== postId));
+        toast.success("Post deleted successfully.");
+      } else {
+        toast.error(res.data.message || "Failed to delete post.");
+      }
+    } catch (error) {
+      toast.error("Error deleting post. Please try again.");
+    }
+  };
+
+  // Fetch posts and comments for the user
+
   const fetchPostsAndComments = useCallback(async () => {
     try {
       const [postRes, commentRes] = await Promise.all([
@@ -162,9 +185,35 @@ export default function ProfileUser() {
     }
   }, [userId]);
 
+  const fetchFollowers = useCallback(async () => {
+    try {
+      const res = await axios.post("/api/users/getFollowers", {
+        AccountId: userId,
+      });
+
+      if (res.status === 200 && res.data.followers) {
+        setFollowers(res.data.followers);
+      } else {
+        toast.error(res.data?.message || "Failed to fetch followers.");
+      }
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+      toast.error("Failed to fetch followers. Please try again later.");
+    }
+  }, [userId]);
+
   useEffect(() => {
+    const res = async () => {
+      const session = await getSession();
+      if (session?.user?.email) {
+        setIsOwnAccount(session.user.email === profileData?.email);
+      }
+    };
+    res();
     if (userId) {
-      fetchProfileData().then(() => fetchPostsAndComments());
+      fetchProfileData()
+        .then(() => fetchPostsAndComments())
+        .then(() => fetchFollowers());
     }
   }, [userId, fetchProfileData, fetchPostsAndComments]);
 
@@ -257,7 +306,7 @@ export default function ProfileUser() {
               </ul>
             </div>
             {/* Followers Section */}
-            <div className="mt-4 flex flex-col items-center">
+            <div className="mt-4 w-full flex flex-col items-center">
               <p className="text-xl text-gray-600">
                 Followers:{" "}
                 <span className="font-bold text-gray-800">
@@ -265,9 +314,22 @@ export default function ProfileUser() {
                 </span>
               </p>
               {isOwnAccount ? (
-                <p className="text-lg font-bold p-2">
-                  You cannot follow yourself
-                </p>
+                <div className="text-lg font-bold p-2 m-2 bg-blue-500 text-white rounded-md shadow-lg w-full max-w-2xl mx-auto">
+                  <p>Followers:</p>
+                  {profileData && profileData.Followers ? (
+                    profileData.Followers?.map((follower, index) => (
+                      <ul>
+                        <li>
+                          <p key={index} className="text-gray-700 text-center">
+                            {index + 1} : {follower.split("@")[0]}
+                          </p>
+                        </li>
+                      </ul>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No followers yet.</p>
+                  )}
+                </div>
               ) : (
                 <button
                   className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-md shadow-lg transition-all duration-200 disabled:opacity-50"
@@ -281,7 +343,8 @@ export default function ProfileUser() {
                     : "Follow"}
                 </button>
               )}
-            </div>{" "}
+            </div>
+
             <hr className="my-8 border-t-4 border-black rounded-md shadow-md w-full" />
             {/* User Posts */}
             <div className="postsUser w-full">
@@ -298,6 +361,22 @@ export default function ProfileUser() {
                     key={post._id}
                     className="p-6 bg-gray-800 max-w-7xl rounded-lg shadow-lg"
                   >
+                    {post.IdUserCreated === userId ? (
+                      <>
+                        <div>
+                          <button
+                            className="p-1 m-1 bg-red-600 cursor-pointer rounded-md text-white hover:bg-red-700 transition"
+                            onClick={() => handleDeletePost(post._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span></span>
+                      </>
+                    )}
                     <p className="text-white text-xl mb-2">
                       <em>
                         Created By{" "}
@@ -373,7 +452,9 @@ export default function ProfileUser() {
                             className="bg-gray-700 text-white p-4 rounded-lg mb-2"
                           >
                             <Link
-                              href={`/ProfileUser/${comment.CommentUserId}`}
+                              href={`/ProfileUser/${
+                                comment.CommentUserId.split("_")[0]
+                              }`}
                               className="text-blue-400 hover:underline"
                             >
                               <div className="flex items-center">
@@ -384,7 +465,6 @@ export default function ProfileUser() {
                                   alt="User Icon"
                                   className="mr-2 rounded-full"
                                 />
-                                <span>{comment.CommentUserId}</span>
                               </div>
                             </Link>
                             <p>{comment.TextComment}</p>
