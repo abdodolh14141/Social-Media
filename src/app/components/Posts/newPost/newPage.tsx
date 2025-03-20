@@ -154,12 +154,12 @@ export default function NewPost() {
     newPostForm.ImageId;
 
   return (
-    <div className="container mx-auto p-2 max-w-3xl">
+    <div className="container mx-auto sm:p-5 md:p-10 lg:p-20 min-h-screen">
       <Toaster richColors position="top-right" />
 
       <form
         onSubmit={handlePostSubmit}
-        className="bg-white shadow-lg rounded-xl p-6 mx-auto border border-gray-100"
+        className="bg-white shadow-lg rounded-xl p-4 mx-auto border border-gray-100"
         aria-label="Create a New Post"
       >
         <h1 className="text-3xl text-center font-bold text-gray-900 mb-8">

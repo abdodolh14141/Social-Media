@@ -46,11 +46,11 @@ export default function HeroForm() {
   return (
     <>
       {/* Replaced SearchAccount with a clearer name AccountSearch */}
-      <div className="p-6">
+      <div className="mb-6">
         <AccountSearch />
       </div>
 
-      <main className=" mx-auto p-2">
+      <main className=" mx-auto">
         {/* Only show the NewPostForm if the user is authenticated */}
         {isAuthenticated ? (
           <NewPostForm />
@@ -71,7 +71,7 @@ export default function HeroForm() {
           </div>
         )}
 
-        <div className="mt-8">
+        <div>
           {/* Replaced GetPosts with a clearer name PostFeed */}
           <PostFeed />
         </div>

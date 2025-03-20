@@ -102,7 +102,7 @@ export default function SearchAccount() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto p-6 bg-white rounded-xl shadow-lg">
+      <div className="max-w-6xl mx-auto p-4 bg-white rounded-xl shadow-lg">
         <Toaster />
         <form
           onSubmit={(e) => e.preventDefault()}
@@ -144,7 +144,6 @@ export default function SearchAccount() {
           </div>
         )}
       </div>{" "}
-      <hr className="my-8 border-t-8 border-black rounded-md shadow-md w-full" />
     </>
   );
 }
