@@ -5,10 +5,9 @@ import { useParams } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { getSession } from "next-auth/react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Link from "next/link";
-import { CldImage } from "next-cloudinary";
 import Image from "next/image";
 import icon from "../../../../public/iconAccount.png";
+import FetchPostUser from "@/app/components/Posts/fetchPosts/fetchPostUser";
 
 interface ProfileData {
   id: string;
@@ -22,23 +21,13 @@ interface ProfileData {
   Followers: string[];
 }
 
-interface Comment {
-  idPost: string;
-  CommentUserId: string;
-  TextComment: string;
-}
-
 export default function ProfileUser() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true); // Loading state for profile data
   const [isOwnAccount, setIsOwnAccount] = useState(false);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [followers, setFollowers] = useState<string[]>([]);
-  const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
-
   const { id: userId } = useParams();
 
   // Check if the user is the owner of the account
@@ -64,6 +53,11 @@ export default function ProfileUser() {
           Followers: user.Followers || [],
         });
         setIsFollowing(user.isUserFollowing);
+
+        const session = await getSession();
+        if (session?.user?.email) {
+          setIsOwnAccount(session?.user?.email === user.Email);
+        }
       } else {
         toast.error("Could not find the account.");
       }
@@ -71,117 +65,6 @@ export default function ProfileUser() {
       toast.error("Failed to load profile.");
     } finally {
       setLoadingProfile(false);
-    }
-  }, [userId]);
-
-  // Comments by post ID
-  const commentsByPostId = useMemo(() => {
-    return comments.reduce((acc, comment) => {
-      if (!acc[comment.idPost]) {
-        acc[comment.idPost] = [];
-      }
-      acc[comment.idPost].push(comment);
-      return acc;
-    }, {} as { [key: string]: Comment[] });
-  }, [comments]);
-
-  const handleLike = async (postId: string) => {
-    try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to like a post.");
-        return;
-      }
-
-      setLoading(true);
-      const { data } = await axios.post("/api/posts/addLike", {
-        postId,
-        userEmail: session.user.email,
-      });
-
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId
-            ? { ...post, Like: data.liked ? post.Like + 1 : post.Like - 1 }
-            : post
-        )
-      );
-
-      toast.success(data.liked ? "Post liked!" : "Like removed.");
-    } catch (error) {
-      toast.error("Error liking the post. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Add a comment to a post
-
-  const handleAddComment = async (e: React.FormEvent, postId: string) => {
-    e.preventDefault();
-
-    try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to comment.");
-        return;
-      }
-
-      setLoading(true);
-
-      const res = await axios.post("/api/posts/addComment", {
-        postId,
-        comment: newComment[postId],
-        userEmail: session.user.email,
-      });
-
-      if (res.status === 200) {
-        setComments((prev) => [
-          ...prev,
-          {
-            idPost: postId,
-            CommentUserId: session.user?.email || "",
-            TextComment: newComment[postId],
-          },
-        ]);
-        setNewComment((prev) => ({ ...prev, [postId]: "" }));
-        toast.success("Comment added successfully!");
-      } else {
-        toast.error(res.data.message || "Failed to add comment.");
-      }
-    } catch (error) {
-      toast.error("Error adding comment. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeletePost = async (postId: string) => {
-    try {
-      const res = await axios.post("/api/posts/deletePost", { postId });
-      if (res.status === 200) {
-        setPosts((prev) => prev.filter((post) => post._id !== postId));
-        toast.success("Post deleted successfully.");
-      } else {
-        toast.error(res.data.message || "Failed to delete post.");
-      }
-    } catch (error) {
-      toast.error("Error deleting post. Please try again.");
-    }
-  };
-
-  // Fetch posts and comments for the user
-
-  const fetchPostsAndComments = useCallback(async () => {
-    try {
-      const [postRes, commentRes] = await Promise.all([
-        axios.post("/api/posts/getPostsUser", { IdUser: userId }),
-        axios.get("/api/posts/fetchComments"),
-      ]);
-      setPosts(postRes.data.posts || []);
-      setComments(commentRes.data.comments || []);
-    } catch (error) {
-      toast.error("Failed to load posts and comments.");
     }
   }, [userId]);
 
@@ -201,21 +84,6 @@ export default function ProfileUser() {
       toast.error("Failed to fetch followers. Please try again later.");
     }
   }, [userId]);
-
-  useEffect(() => {
-    const res = async () => {
-      const session = await getSession();
-      if (session?.user?.email) {
-        setIsOwnAccount(session.user.email === profileData?.email);
-      }
-    };
-    res();
-    if (userId) {
-      fetchProfileData()
-        .then(() => fetchPostsAndComments())
-        .then(() => fetchFollowers());
-    }
-  }, [userId, fetchProfileData, fetchPostsAndComments]);
 
   const handleFollow = useCallback(async () => {
     if (loading || !profileData) return;
@@ -257,6 +125,12 @@ export default function ProfileUser() {
       setLoading(false);
     }
   }, [loading, profileData]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchProfileData().then(() => fetchFollowers());
+    }
+  }, [userId, fetchProfileData]);
 
   return (
     <>
@@ -314,12 +188,15 @@ export default function ProfileUser() {
                 </span>
               </p>
               {isOwnAccount ? (
-                <div className="text-lg font-bold p-2 m-2 bg-blue-500 text-white rounded-md shadow-lg w-full max-w-2xl mx-auto">
-                  <p>Followers:</p>
-                  {profileData && profileData.Followers ? (
-                    profileData.Followers?.map((follower, index) => (
+                <div className="text-lg font-bold p-2 m-2 text-white rounded-md shadow-lg w-full mx-auto">
+                  {profileData && profileData.Followers.length > 0 ? (
+                    profileData?.Followers?.map((follower, index) => (
                       <ul>
                         <li>
+                          <h1>
+                            {" "}
+                            <p>Followers:</p>
+                          </h1>
                           <p key={index} className="text-gray-700 text-center">
                             {index + 1} : {follower.split("@")[0]}
                           </p>
@@ -327,7 +204,7 @@ export default function ProfileUser() {
                       </ul>
                     ))
                   ) : (
-                    <p className="text-gray-500">No followers yet.</p>
+                    <p className="text-gray-500">No Followers Yet.</p>
                   )}
                 </div>
               ) : (
@@ -346,138 +223,7 @@ export default function ProfileUser() {
             </div>
 
             <hr className="my-8 border-t-4 border-black rounded-md shadow-md w-full" />
-            {/* User Posts */}
-            <div className="postsUser w-full">
-              <h1 className="text-center text-3xl font-semibold p-2 m-2">
-                Posts
-              </h1>
-              {posts.length === 0 ? (
-                <p className="text-gray-600 text-center">
-                  No posts found for this user.
-                </p>
-              ) : (
-                posts.map((post) => (
-                  <div
-                    key={post._id}
-                    className="p-6 bg-gray-800 max-w-7xl rounded-lg shadow-lg"
-                  >
-                    {post.IdUserCreated === userId ? (
-                      <>
-                        <div>
-                          <button
-                            className="p-1 m-1 bg-red-600 cursor-pointer rounded-md text-white hover:bg-red-700 transition"
-                            onClick={() => handleDeletePost(post._id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <span></span>
-                      </>
-                    )}
-                    <p className="text-white text-xl mb-2">
-                      <em>
-                        Created By{" "}
-                        <Link
-                          href={`/ProfileUser/${post.IdUserCreated}`}
-                          className="text-red-500 font-bold hover:underline"
-                        >
-                          {post.AuthorName}
-                        </Link>
-                      </em>
-                    </p>
-                    <h3 className="text-3xl font-semibold text-center text-white mb-4">
-                      {post.Title}
-                    </h3>
-                    {post.PublicImage && (
-                      <div className="mb-4">
-                        <CldImage
-                          src={post.PublicImage}
-                          alt="Post Image"
-                          width="650"
-                          height="300"
-                          className="rounded-lg shadow-md w-full"
-                          style={{ objectFit: "cover" }}
-                        />
-                      </div>
-                    )}
-                    <p className="text-white text-xl text-center mb-4">
-                      {post.Content}
-                    </p>
-                    <button
-                      onClick={() => handleLike(post._id)}
-                      className={`p-2 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition ${
-                        loading ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                      disabled={loading}
-                    >
-                      Like: {post.Like}
-                    </button>
-                    <form
-                      onSubmit={(e) => handleAddComment(e, post._id)}
-                      className="mt-4"
-                    >
-                      <input
-                        type="text"
-                        value={newComment[post._id] || ""}
-                        onChange={(e) =>
-                          setNewComment((prev) => ({
-                            ...prev,
-                            [post._id]: e.target.value,
-                          }))
-                        }
-                        placeholder="Write a comment"
-                        className="w-full border rounded-md px-3 py-2 mb-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                      <button
-                        type="submit"
-                        className={`w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition ${
-                          loading ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                        disabled={loading}
-                      >
-                        Submit Comment
-                      </button>
-                    </form>
-                    <div className="mt-4">
-                      <h4 className="text-white font-semibold mb-2">
-                        Comments:
-                      </h4>
-                      {commentsByPostId[post._id]?.length ? (
-                        commentsByPostId[post._id].map((comment, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-gray-700 text-white p-4 rounded-lg mb-2"
-                          >
-                            <Link
-                              href={`/ProfileUser/${
-                                comment.CommentUserId.split("_")[0]
-                              }`}
-                              className="text-blue-400 hover:underline"
-                            >
-                              <div className="flex items-center">
-                                <Image
-                                  src={icon}
-                                  width={30}
-                                  height={30}
-                                  alt="User Icon"
-                                  className="mr-2 rounded-full"
-                                />
-                              </div>
-                            </Link>
-                            <p>{comment.TextComment}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-400">No comments yet.</p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            {typeof userId === "string" && <FetchPostUser userId={userId} />}
           </>
         )}
       </div>

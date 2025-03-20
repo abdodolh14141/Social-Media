@@ -47,7 +47,7 @@ export default function Header() {
             href="/"
             className="text-2xl font-semibold hover:scale-105 transition-transform"
           >
-            LinkList
+            Social Media
           </Link>
           <nav className="flex items-center gap-4 text-lg">
             <Link
