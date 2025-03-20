@@ -54,8 +54,8 @@ export default function GetPosts() {
       } else {
         toast.error("Failed to load data. Please refresh the page.");
       }
-    } catch (error) {
-      toast.error("Failed to load data. Please refresh the page.");
+    } catch (error: any) {
+      toast.error(`Failed to load data. Please refresh the page => ${error}`);
     } finally {
       setLoading(false);
     }
@@ -133,8 +133,8 @@ export default function GetPosts() {
         userEmail: session.user.email,
       });
 
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
+      setPosts((prevPosts: any) =>
+        prevPosts.map((post: any) =>
           post._id === postId
             ? { ...post, Like: data.liked ? post.Like + 1 : post.Like - 1 }
             : post
@@ -142,8 +142,8 @@ export default function GetPosts() {
       );
 
       toast.success(data.liked ? "Post liked!" : "Like removed.");
-    } catch (error) {
-      toast.error("Error liking the post. Please try again.");
+    } catch (error: any) {
+      toast.error(`Error liking the post Error Message => ${error}`);
     } finally {
       setLoading(false);
     }
@@ -182,8 +182,8 @@ export default function GetPosts() {
       } else {
         toast.error(res.data.message || "Failed to add comment.");
       }
-    } catch (error) {
-      toast.error("Error adding comment. Please try again.");
+    } catch (error: any) {
+      toast.error(`Error adding comment Error : ${error}`);
     } finally {
       setLoading(false);
     }
@@ -192,7 +192,7 @@ export default function GetPosts() {
   return (
     <>
       <Toaster />
-      <div className="container mx-auto p-5 max-w-5xl">
+      <div className="container h-auto mx-auto p-5 max-w-5xl">
         <h1 className="text-center text-4xl font-bold text-white mb-5">
           Posts
         </h1>
@@ -213,7 +213,7 @@ export default function GetPosts() {
             {formattedPosts.map((post) => (
               <div
                 key={post._id}
-                className="p-6 rounded-lg shadow-lg bg-gray-800"
+                className="p-6 rounded-lg shadow-lg bg-gray-200"
               >
                 {user && user.id === post.IdUserCreated && (
                   <button
@@ -224,7 +224,7 @@ export default function GetPosts() {
                     Delete
                   </button>
                 )}
-                <p className="text-white text-xl mb-2">
+                <p className="text-black font-bold text-xl mb-2">
                   <em>
                     Created By{" "}
                     <Link
@@ -235,19 +235,19 @@ export default function GetPosts() {
                     </Link>
                   </em>
                 </p>
-                <h3 className="text-3xl font-semibold text-center text-white mb-4">
+                <h3 className="text-3xl font-semibold text-center text-black mb-4">
                   {post.Title}
                 </h3>
                 {post.PublicImage && (
                   <CldImage
                     src={post.PublicImage}
                     alt="Post Image"
-                    width="650"
-                    height="300"
+                    width="450"
+                    height="200"
                     className="rounded-lg shadow-md w-full mb-4"
                   />
                 )}
-                <p className="text-white text-xl text-center mb-4">
+                <p className="text-black text-2xl font-bold text-center mb-4">
                   {post.Content}
                 </p>
                 <button
@@ -280,7 +280,6 @@ export default function GetPosts() {
                   </button>
                 </form>
                 <div className="mt-4" id={post._id}>
-                  <h4 className="text-white font-semibold mb-2">Comments:</h4>
                   {commentsByPostId[post._id]?.length ? (
                     commentsByPostId[post._id].map((comment, idx) => (
                       <div
