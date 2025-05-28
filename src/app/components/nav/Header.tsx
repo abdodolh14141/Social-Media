@@ -64,6 +64,7 @@ export default function Header() {
           src="https://cdn-icons-png.flaticon.com/512/2065/2065157.png"
           alt="Website Icon"
           className="w-10 h-10"
+          loading="lazy"
         />
 
         {/* User Actions */}

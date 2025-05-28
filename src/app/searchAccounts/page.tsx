@@ -13,7 +13,7 @@ interface Account {
   Email: string;
 }
 
-export default function Account() {
+export default function SearchAccount() {
   const [name, setName] = useState("");
   const [searchResults, setSearchResults] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);

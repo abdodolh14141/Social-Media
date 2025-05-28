@@ -16,12 +16,14 @@ export default function LastNav() {
           <Link
             className="hover:scale-110 p-2 hover:bg-red-600 rounded-lg"
             href={"https://github.com/abdodolh14141/Social-Media"}
+            target="_blank"
           >
             Sourse Code
           </Link>
           <Link
             className="hover:scale-110 p-2 hover:bg-red-600 rounded-lg"
             href={"https://www.instagram.com/just_dolh/"}
+            target="_blank"
           >
             Instagram
           </Link>

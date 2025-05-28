@@ -159,7 +159,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
           posts.map((post) => (
             <div
               key={post._id}
-              className="p-6 bg-gray-800 max-w-5xl rounded-lg shadow-lg"
+              className="p-6 bg-gray-800 max-w-7xl rounded-lg shadow-lg"
             >
               {isOwnAccount ? (
                 <>
@@ -179,7 +179,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
               )}
               <p className="text-white text-xl mb-2">
                 <em>
-                  Created By{" "}
+                  Created By
                   <Link
                     href={`/ProfileUser/${post.IdUserCreated}`}
                     className="text-red-500 font-bold hover:underline"

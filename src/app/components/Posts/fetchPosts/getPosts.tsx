@@ -192,7 +192,7 @@ export default function GetPosts() {
   return (
     <>
       <Toaster />
-      <div className="container h-auto mx-auto p-5 max-w-5xl">
+      <div className="container h-auto mx-auto p-5 max-w-6xl">
         <h1 className="text-center text-4xl font-bold text-white mb-5">
           Posts
         </h1>
@@ -213,7 +213,7 @@ export default function GetPosts() {
             {formattedPosts.map((post) => (
               <div
                 key={post._id}
-                className="p-6 rounded-lg shadow-lg bg-gray-200"
+                className="p-6 rounded-lg shadow-xl bg-gray-400 transition duration-300 ease-in-out hover:bg-gray-500 hover:scale-110"
               >
                 {user && user.id === post.IdUserCreated && (
                   <button
@@ -226,7 +226,6 @@ export default function GetPosts() {
                 )}
                 <p className="text-black font-bold text-xl mb-2">
                   <em>
-                    Created By{" "}
                     <Link
                       href={`/ProfileUser/${post.IdUserCreated}`}
                       className="text-red-500 font-bold hover:underline"

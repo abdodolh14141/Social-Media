@@ -152,12 +152,12 @@ export default function Register() {
             Register
           </button>
         </form>
+        <div className="flex items-center justify-center mt-4">
+          <span className="text-gray-500">or</span>
+        </div>
 
         <div className="mt-6">
           <LoginWithGoogle />
-        </div>
-        <div className="flex items-center justify-center mt-4">
-          <span className="text-gray-500">or</span>
         </div>
       </div>
     </div>

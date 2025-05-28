@@ -6,7 +6,7 @@ import NewPost from "../newPost/newPage";
 import GetPosts from "../fetchPosts/getPosts";
 import { getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Account from "@/app/searchAccounts/page";
+import SearchAccount from "@/app/searchAccounts/page";
 import About from "@/app/about/page";
 
 export default function HeroForm() {
@@ -29,7 +29,7 @@ export default function HeroForm() {
   return (
     <>
       <Toaster />
-      <Account />
+      <SearchAccount />
 
       <main className="w-full mx-auto p-6">
         {isAuthenticated ? (
@@ -37,7 +37,7 @@ export default function HeroForm() {
             <NewPost />
           </>
         ) : (
-          <div></div>
+          <span></span>
         )}
 
         <div>
