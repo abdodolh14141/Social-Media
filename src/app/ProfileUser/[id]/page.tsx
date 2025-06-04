@@ -147,9 +147,8 @@ export default function ProfileUser() {
           <>
             {/* Profile Header */}
             <h4 className="text-3xl p-2">
-              {isOwnAccount ? "Your Profile" : "Account"}
+              {isOwnAccount ? "Your Profile" : <div></div>}
             </h4>
-            <hr className="my-6 border-t-2 border-black w-full" />
             {/* Profile Details */}
             <div className="text-center mt-4 w-full">
               <Image

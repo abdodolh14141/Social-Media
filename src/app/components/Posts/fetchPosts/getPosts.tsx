@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { getSession } from "next-auth/react";
 import axios from "axios";
@@ -8,6 +7,7 @@ import Link from "next/link";
 import { CldImage } from "next-cloudinary";
 import icon from "../../../../../public/iconAccount.png";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Post {
   _id: string;
@@ -32,15 +32,62 @@ interface User {
   name: string;
 }
 
+// Animation variants
+const postVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" },
+  },
+  exit: { opacity: 0, y: -20 },
+};
+
+const commentVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 20 },
+};
+
+const buttonHover = {
+  scale: 1.05,
+  transition: { duration: 0.2 },
+};
+
+const buttonTap = {
+  scale: 0.95,
+};
+
+// simple in-memory cache for posts and comments
+const dataCache = {
+  posts: null as Post[] | null,
+  comments: null as Comment[] | null,
+  user: null as User | null,
+  lastUpdated: 0,
+};
+
 export default function GetPosts() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
   const [user, setUser] = useState<User | null>(null);
+  const [expandedComments, setExpandedComments] = useState<{
+    [key: string]: boolean;
+  }>({});
 
-  // Fetch posts and comments
+  // Fetch posts and comments with caching
   const fetchPostsAndComments = useCallback(async () => {
+    const now = Date.now();
+    if (
+      dataCache.lastUpdated &&
+      now - dataCache.lastUpdated < 120000 &&
+      dataCache.posts
+    ) {
+      setPosts(dataCache.posts || []);
+      setComments(dataCache.comments || []);
+      return;
+    }
     setLoading(true);
     try {
       const [postRes, commentRes] = await Promise.all([
@@ -49,10 +96,16 @@ export default function GetPosts() {
       ]);
 
       if (postRes.status === 200 && commentRes.status === 200) {
-        setPosts(postRes.data.posts || []);
-        setComments(commentRes.data.comments || []);
-      } else {
-        toast.error("Failed to load data. Please refresh the page.");
+        const postsData = postRes.data.posts || [];
+        const commentsData = commentRes.data.comments || [];
+
+        // Update cache
+        dataCache.posts = postsData;
+        dataCache.comments = commentsData;
+        dataCache.lastUpdated = now;
+
+        setPosts(postsData);
+        setComments(commentsData);
       }
     } catch (error: any) {
       toast.error(`Failed to load data. Please refresh the page => ${error}`);
@@ -62,39 +115,56 @@ export default function GetPosts() {
   }, []);
 
   // Delete post by ID
+  const handleDeletePost = useCallback(
+    async (postId: string) => {
+      try {
+        const res = await axios.delete(`/api/posts/fetchPosts`, {
+          data: { idPost: postId },
+        });
 
-  const handleDeletePost = async (postId: string) => {
-    try {
-      const res = await axios.delete(`/api/posts/fetchPosts`, {
-        data: { idPost: postId }, // Pass the post ID in the `data` key for DELETE
-      });
-
-      if (res.status === 200) {
-        toast.success("Post deleted successfully!");
-        await fetchPostsAndComments(); // Refresh the posts list after deletion
-      } else {
-        toast.error(
-          res.data.message || "Failed to delete the post. Please try again."
-        );
+        if (res.status === 200) {
+          await fetchPostsAndComments();
+          if (dataCache.posts) {
+            dataCache.posts = dataCache.posts.filter(
+              (post) => post._id !== postId
+            );
+          }
+          if (dataCache.comments) {
+            dataCache.comments = dataCache.comments.filter(
+              (comment) => comment.idPost !== postId
+            );
+          }
+          toast.success("Post deleted successfully!");
+        }
+      } catch (error: any) {
+        const errorMessage =
+          error.response?.data?.message || "An unexpected error occurred.";
+        toast.error(errorMessage);
       }
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || "An unexpected error occurred.";
-      toast.error(errorMessage);
+    },
+    [fetchPostsAndComments]
+  );
+
+  // Fetch user session with caching
+  const fetchUserSession = useCallback(async () => {
+    if (dataCache.user) {
+      setUser(dataCache.user);
+      return;
     }
-  };
+    const session = await getSession();
+    if (session?.user) {
+      dataCache.user = session.user;
+      setUser(session.user);
+    }
+  }, []);
 
-  // Fetch posts and comments on initial render
-
+  // Initial data fetch
   useEffect(() => {
-    const resSession = async () => {
-      const session = await getSession();
-      setUser(session?.user || null);
-    };
-    resSession();
+    fetchUserSession();
     fetchPostsAndComments();
-  }, [fetchPostsAndComments]);
+  }, [fetchPostsAndComments, fetchUserSession]);
 
+  // Memoized formatted posts
   const formattedPosts = useMemo(
     () =>
       posts.map((post) => ({
@@ -105,8 +175,7 @@ export default function GetPosts() {
     [posts]
   );
 
-  // Group comments by post ID
-
+  // Memoized comments grouped by post ID
   const commentsByPostId = useMemo(() => {
     return comments.reduce((acc, comment) => {
       if (!acc[comment.idPost]) {
@@ -118,23 +187,27 @@ export default function GetPosts() {
   }, [comments]);
 
   // Handle like post
-
-  const handleLike = async (postId: string) => {
+  const handleLike = useCallback(async (postId: string) => {
     try {
       const session = await getSession();
       if (!session?.user?.email) {
         toast.error("You must be logged in to like a post.");
         return;
       }
-
+      // Update cache
+      if (dataCache.posts) {
+        dataCache.posts = dataCache.posts.map((post) =>
+          post._id === postId ? { ...post, Like: post.Like + 1 } : post
+        );
+      }
       setLoading(true);
       const { data } = await axios.post("/api/posts/addLike", {
         postId,
         userEmail: session.user.email,
       });
 
-      setPosts((prevPosts: any) =>
-        prevPosts.map((post: any) =>
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
           post._id === postId
             ? { ...post, Like: data.liked ? post.Like + 1 : post.Like - 1 }
             : post
@@ -147,169 +220,298 @@ export default function GetPosts() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Handle add comment
+  const handleAddComment = useCallback(
+    async (e: React.FormEvent, postId: string) => {
+      e.preventDefault();
 
-  const handleAddComment = async (e: React.FormEvent, postId: string) => {
-    e.preventDefault();
+      try {
+        const session = await getSession();
+        if (!session?.user?.email) {
+          toast.error("You must be logged in to comment.");
+          return;
+        }
 
-    try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to comment.");
-        return;
+        setLoading(true);
+
+        const res = await axios.post("/api/posts/addComment", {
+          postId,
+          comment: newComment[postId],
+          userEmail: session.user.email,
+        });
+
+        if (res.status === 200) {
+          const newCommentData: Comment = {
+            idPost: postId,
+            CommentUserId: session.user.email || "",
+            TextComment: newComment[postId],
+          };
+
+          setComments((prev) => [...prev, newCommentData]);
+          setNewComment((prev) => ({ ...prev, [postId]: "" }));
+
+          toast.success("Comment added successfully!");
+        } else {
+          toast.error(res.data.message || "Failed to add comment.");
+        }
+      } catch (error: any) {
+        toast.error(`Error adding comment Error : ${error}`);
+      } finally {
+        setLoading(false);
       }
+    },
+    [newComment]
+  );
 
-      setLoading(true);
-
-      const res = await axios.post("/api/posts/addComment", {
-        postId,
-        comment: newComment[postId],
-        userEmail: session.user.email,
-      });
-
-      if (res.status === 200) {
-        const newCommentData: Comment = {
-          idPost: postId,
-          CommentUserId: session.user.email || "",
-          TextComment: newComment[postId],
-        };
-
-        setComments((prev) => [...prev, newCommentData]);
-        setNewComment((prev) => ({ ...prev, [postId]: "" }));
-        toast.success("Comment added successfully!");
-      } else {
-        toast.error(res.data.message || "Failed to add comment.");
-      }
-    } catch (error: any) {
-      toast.error(`Error adding comment Error : ${error}`);
-    } finally {
-      setLoading(false);
-    }
+  const toggleComments = (postId: string) => {
+    setExpandedComments((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
   };
 
   return (
     <>
-      <Toaster />
-      <div className="container h-auto mx-auto p-5 max-w-6xl">
-        <h1 className="text-center text-4xl font-bold text-white mb-5">
+      <Toaster position="top-center" richColors />
+      <div className="w-full px-4 md:px-8 lg:px-16 py-8">
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center text-3xl font-bold p-4 mb-8 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg shadow-lg"
+        >
           Posts
-        </h1>
+        </motion.h1>
+
         {loading ? (
-          <div className="flex justify-center items-center m-5">
-            <p className="text-white text-xl font-semibold">Loading...</p>
-            <div className="spinner ml-4 border-t-4 border-white rounded-full w-8 h-8 animate-spin"></div>
+          <div className="flex justify-center items-center h-64">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
+            />
           </div>
         ) : formattedPosts.length === 0 ? (
-          <h3 className="text-center text-2xl font-bold text-white">
-            No Found Posts
-          </h3>
-        ) : (
-          <div
-            className="grid grid-row-1
-           sm:grid-row-2 lg:grid-row-3 gap-6 "
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-gray-400 text-center text-xl py-12"
           >
-            {formattedPosts.map((post) => (
-              <div
-                key={post._id}
-                className="p-6 rounded-lg shadow-xl bg-gray-400 transition duration-300 ease-in-out hover:bg-gray-500 hover:scale-110"
-              >
-                {user && user.id === post.IdUserCreated && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePost(post._id)}
-                    className="bg-red-500 text-white p-2 rounded mb-4 cursor-pointer hover:bg-red-600 transition"
-                  >
-                    Delete
-                  </button>
-                )}
-                <p className="text-black font-bold text-xl mb-2">
-                  <em>
-                    <Link
-                      href={`/ProfileUser/${post.IdUserCreated}`}
-                      className="text-red-500 font-bold hover:underline"
-                    >
-                      {post.AuthorName}
-                    </Link>
-                  </em>
-                </p>
-                <h3 className="text-3xl font-semibold text-center text-black mb-4">
-                  {post.Title}
-                </h3>
-                {post.PublicImage && (
-                  <CldImage
-                    src={post.PublicImage}
-                    alt="Post Image"
-                    width="450"
-                    height="200"
-                    className="rounded-lg shadow-md w-full mb-4"
-                  />
-                )}
-                <p className="text-black text-2xl font-bold text-center mb-4">
-                  {post.Content}
-                </p>
-                <button
-                  onClick={() => handleLike(post._id)}
-                  className="p-2 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition"
+            No posts found.
+          </motion.p>
+        ) : (
+          <div className="grid gap-8">
+            <AnimatePresence>
+              {formattedPosts.map((post) => (
+                <motion.div
+                  key={post._id}
+                  variants={postVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  layout
+                  className="p-6 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl shadow-2xl border border-gray-700"
                 >
-                  Like: {post.Like}
-                </button>
-                <form
-                  onSubmit={(e) => handleAddComment(e, post._id)}
-                  className="mt-4"
-                >
-                  <input
-                    type="text"
-                    value={newComment[post._id] || ""}
-                    onChange={(e) =>
-                      setNewComment((prev) => ({
-                        ...prev,
-                        [post._id]: e.target.value,
-                      }))
-                    }
-                    placeholder="Write a comment"
-                    className="w-full border rounded-md px-3 py-2 mb-2"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
-                  >
-                    Submit Comment
-                  </button>
-                </form>
-                <div className="mt-4" id={post._id}>
-                  {commentsByPostId[post._id]?.length ? (
-                    commentsByPostId[post._id].map((comment, idx) => (
-                      <div
-                        key={comment.idPost + idx}
-                        className="bg-gray-700 text-white p-4 rounded-lg mb-2"
+                  {user && user.id === post.IdUserCreated && (
+                    <motion.div className="flex justify-end">
+                      <motion.button
+                        whileHover={buttonHover}
+                        whileTap={buttonTap}
+                        onClick={() => handleDeletePost(post._id)}
+                        className="p-2 px-4 bg-red-600 cursor-pointer rounded-md text-white hover:bg-red-700 transition shadow-md"
                       >
-                        <Link
-                          href={`/ProfileUser/${
-                            comment.CommentUserId.split("_")[0]
-                          }`}
-                          className="text-blue-400 hover:underline"
-                        >
-                          <div className="flex items-center">
-                            <Image
-                              src={icon}
-                              width={30}
-                              height={30}
-                              alt="User Icon"
-                              className="mr-2 rounded-full"
-                            />
-                          </div>
-                        </Link>
-                        <p>{comment.TextComment}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400">No comments yet.</p>
+                        Delete Post
+                      </motion.button>
+                    </motion.div>
                   )}
-                </div>
-              </div>
-            ))}
+
+                  <div className="flex items-center mb-4">
+                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3">
+                      <Image
+                        src={icon}
+                        width={24}
+                        height={24}
+                        alt="User Icon"
+                        className="rounded-full"
+                      />
+                    </div>
+                    <p className="text-gray-300">
+                      Posted by{" "}
+                      <Link
+                        href={`/ProfileUser/${post.IdUserCreated}`}
+                        className="text-blue-400 font-semibold hover:underline"
+                        prefetch={false}
+                      >
+                        {post.AuthorName}
+                      </Link>
+                    </p>
+                  </div>
+
+                  <motion.h3
+                    whileHover={{ scale: 1.01 }}
+                    className="text-3xl font-bold text-center text-white mb-6"
+                  >
+                    {post.Title}
+                  </motion.h3>
+
+                  {post.PublicImage && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className="mb-6 overflow-hidden rounded-xl shadow-lg"
+                    >
+                      <CldImage
+                        src={post.PublicImage}
+                        alt="Post Image"
+                        width="800"
+                        height="400"
+                        className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
+                        priority={false}
+                        loading="lazy"
+                      />
+                    </motion.div>
+                  )}
+
+                  <div className="mb-6">
+                    <h2 className="text-white text-xl font-semibold mb-2">
+                      Content:
+                    </h2>
+                    <p className="text-gray-300 text-lg p-4 bg-gray-700 rounded-lg">
+                      {post.Content}
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-6">
+                    <motion.button
+                      whileHover={buttonHover}
+                      whileTap={buttonTap}
+                      onClick={() => handleLike(post._id)}
+                      className={`px-6 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-full shadow-md hover:shadow-lg transition ${
+                        loading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                      disabled={loading}
+                    >
+                      👍 Like: {post.Like}
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={buttonHover}
+                      whileTap={buttonTap}
+                      onClick={() => toggleComments(post._id)}
+                      className="px-6 py-2 bg-gray-700 text-white rounded-full"
+                    >
+                      {expandedComments[post._id]
+                        ? "Hide Comments"
+                        : "Show Comments"}
+                    </motion.button>
+                  </div>
+
+                  <motion.form
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    onSubmit={(e) => handleAddComment(e, post._id)}
+                    className="mb-6"
+                  >
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newComment[post._id] || ""}
+                        onChange={(e) =>
+                          setNewComment((prev) => ({
+                            ...prev,
+                            [post._id]: e.target.value,
+                          }))
+                        }
+                        placeholder="Write a comment..."
+                        className="flex-1 border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                      <motion.button
+                        whileHover={buttonHover}
+                        whileTap={buttonTap}
+                        type="submit"
+                        className={`px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg shadow-md ${
+                          loading ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                      >
+                        {loading ? "..." : "Post"}
+                      </motion.button>
+                    </div>
+                  </motion.form>
+
+                  <AnimatePresence>
+                    {expandedComments[post._id] && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                      >
+                        <h4 className="text-white font-semibold mb-4 text-xl">
+                          Comments:
+                        </h4>
+                        {commentsByPostId[post._id]?.length ? (
+                          <div className="space-y-3">
+                            <AnimatePresence>
+                              {commentsByPostId[post._id].map(
+                                (comment, idx) => (
+                                  <motion.div
+                                    key={`${comment.idPost}-${idx}`}
+                                    variants={commentVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="exit"
+                                    className="bg-gray-700 text-white p-4 rounded-lg shadow-md"
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+                                        <Image
+                                          src={icon}
+                                          width={16}
+                                          height={16}
+                                          alt="User Icon"
+                                          className="rounded-full"
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Link
+                                          href={`/ProfileUser/${
+                                            comment.CommentUserId.split("_")[0]
+                                          }`}
+                                          className="text-blue-400 hover:underline text-sm font-medium"
+                                          prefetch={false}
+                                        >
+                                          {comment.CommentUserId.split("@")[0]}
+                                        </Link>
+                                        <p className="text-gray-200 mt-1">
+                                          {comment.TextComment}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        ) : (
+                          <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="text-gray-400 italic"
+                          >
+                            No comments yet. Be the first to comment!
+                          </motion.p>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </div>
