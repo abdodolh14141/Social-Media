@@ -338,7 +338,6 @@ export default function GetPosts() {
                       />
                     </div>
                     <p className="text-gray-300">
-                      Posted by{" "}
                       <Link
                         href={`/ProfileUser/${post.IdUserCreated}`}
                         className="text-blue-400 font-semibold hover:underline"
