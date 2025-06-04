@@ -20,24 +20,24 @@ const postVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: "easeOut" },
+    transition: { duration: 0.3, ease: "easeOut" },
   },
   exit: { opacity: 0, y: -20 },
 };
 
 const commentVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 20 },
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.95 },
 };
 
 const buttonHover = {
-  scale: 1.05,
-  transition: { duration: 0.2 },
+  scale: 1.03,
+  transition: { duration: 0.15 },
 };
 
 const buttonTap = {
-  scale: 0.95,
+  scale: 0.97,
 };
 
 export default function FetchPostUser({ userId }: { userId: string }) {
@@ -180,7 +180,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
         />
       </div>
     );
@@ -190,13 +190,13 @@ export default function FetchPostUser({ userId }: { userId: string }) {
     <>
       <Toaster position="top-center" richColors />
 
-      {/* User Posts */}
-      <div className="postsUser w-full px-4 md:px-8 lg:px-16 py-8">
+      {/* Mobile-optimized container */}
+      <div className="w-full px-2 sm:px-4 py-4">
         <motion.h1
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center text-3xl font-bold p-4 mb-8 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg shadow-lg"
+          transition={{ duration: 0.3 }}
+          className="text-center text-2xl sm:text-3xl font-bold p-3 mb-4 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg shadow-md"
         >
           Posts
         </motion.h1>
@@ -205,12 +205,12 @@ export default function FetchPostUser({ userId }: { userId: string }) {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-gray-400 text-center text-xl py-12"
+            className="text-gray-400 text-center text-lg py-8"
           >
             No posts found for this user.
           </motion.p>
         ) : (
-          <div className="grid gap-8">
+          <div className="space-y-4">
             <AnimatePresence>
               {posts.map((post) => (
                 <motion.div
@@ -220,36 +220,36 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                   animate="visible"
                   exit="exit"
                   layout
-                  className="p-6 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl shadow-2xl border border-gray-700"
+                  className="p-4 sm:p-5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-lg border border-gray-700"
                 >
                   {isOwnAccount && (
-                    <motion.div className="flex justify-end">
+                    <motion.div className="flex justify-end mb-2">
                       <motion.button
                         whileHover={buttonHover}
                         whileTap={buttonTap}
                         onClick={() => handleDeletePost(post._id)}
-                        className="p-2 px-4 bg-red-600 cursor-pointer rounded-md text-white hover:bg-red-700 transition shadow-md"
+                        className="text-xs sm:text-sm p-1.5 px-3 bg-red-600 cursor-pointer rounded text-white hover:bg-red-700 transition shadow-sm"
                       >
-                        Delete Post
+                        Delete
                       </motion.button>
                     </motion.div>
                   )}
 
-                  <div className="flex items-center mb-4">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-700 flex items-center justify-center mr-2">
                       <Image
                         src={icon}
-                        width={24}
-                        height={24}
+                        width={20}
+                        height={20}
                         alt="User Icon"
                         className="rounded-full"
                       />
                     </div>
-                    <p className="text-gray-300">
+                    <p className="text-sm sm:text-base text-gray-300">
                       Posted by{" "}
                       <Link
                         href={`/ProfileUser/${post.IdUserCreated}`}
-                        className="text-blue-400 font-semibold hover:underline"
+                        className="text-blue-400 font-medium hover:underline"
                       >
                         {post.AuthorName}
                       </Link>
@@ -257,8 +257,8 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                   </div>
 
                   <motion.h3
-                    whileHover={{ scale: 1.01 }}
-                    className="text-3xl font-bold text-center text-white mb-6"
+                    whileHover={{ scale: 1.005 }}
+                    className="text-xl sm:text-2xl font-bold text-center text-white mb-4"
                   >
                     {post.Title}
                   </motion.h3>
@@ -267,34 +267,35 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="mb-6 overflow-hidden rounded-xl shadow-lg"
+                      transition={{ delay: 0.1 }}
+                      className="mb-4 overflow-hidden rounded-lg shadow-md"
                     >
                       <CldImage
                         src={post.PublicImage}
                         alt="Post Image"
-                        width="800"
-                        height="400"
-                        className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
+                        width={800}
+                        height={400}
+                        sizes="(max-width: 640px) 100vw, 800px"
+                        className="w-full h-auto object-cover"
                       />
                     </motion.div>
                   )}
 
-                  <div className="mb-6">
-                    <h2 className="text-white text-xl font-semibold mb-2">
+                  <div className="mb-4">
+                    <h2 className="text-white text-sm sm:text-base font-semibold mb-1">
                       Content:
                     </h2>
-                    <p className="text-gray-300 text-lg p-4 bg-gray-700 rounded-lg">
+                    <p className="text-gray-300 text-sm sm:text-base p-3 bg-gray-700 rounded-md">
                       {post.Content}
                     </p>
                   </div>
 
-                  <div className="flex justify-between items-center mb-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mb-4">
                     <motion.button
                       whileHover={buttonHover}
                       whileTap={buttonTap}
                       onClick={() => handleLike(post._id)}
-                      className={`px-6 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-full shadow-md hover:shadow-lg transition ${
+                      className={`w-full sm:w-auto px-4 py-1.5 text-sm bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-full shadow-sm hover:shadow transition ${
                         loading ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                       disabled={loading}
@@ -306,7 +307,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                       whileHover={buttonHover}
                       whileTap={buttonTap}
                       onClick={() => toggleComments(post._id)}
-                      className="px-6 py-2 bg-gray-700 text-white rounded-full"
+                      className="w-full sm:w-auto px-4 py-1.5 text-sm bg-gray-700 text-white rounded-full"
                     >
                       {expandedComments[post._id]
                         ? "Hide Comments"
@@ -318,9 +319,9 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     onSubmit={(e) => handleAddComment(e, post._id)}
-                    className="mb-6"
+                    className="mb-4"
                   >
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         value={newComment[post._id] || ""}
@@ -331,13 +332,13 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                           }))
                         }
                         placeholder="Write a comment..."
-                        className="flex-1 border border-gray-600 rounded-lg px-4 py-2 bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="flex-1 text-sm border border-gray-600 rounded-lg px-3 py-2 bg-gray-700 text-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
                       />
                       <motion.button
                         whileHover={buttonHover}
                         whileTap={buttonTap}
                         type="submit"
-                        className={`px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg shadow-md ${
+                        className={`px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg shadow-sm ${
                           loading ? "opacity-50 cursor-not-allowed" : ""
                         }`}
                       >
@@ -352,14 +353,14 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <h4 className="text-white font-semibold mb-4 text-xl">
+                        <h4 className="text-white text-sm sm:text-base font-semibold mb-2">
                           Comments:
                         </h4>
                         {commentsByPostId[post._id]?.length ? (
-                          <div className="space-y-3">
+                          <div className="space-y-2">
                             <AnimatePresence>
                               {commentsByPostId[post._id].map(
                                 (comment, idx) => (
@@ -369,14 +370,14 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                                     initial="hidden"
                                     animate="visible"
                                     exit="exit"
-                                    className="bg-gray-700 text-white p-4 rounded-lg shadow-md"
+                                    className="bg-gray-700 text-white p-3 rounded-md shadow-sm"
                                   >
-                                    <div className="flex items-start gap-3">
-                                      <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+                                    <div className="flex items-start gap-2">
+                                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-600 flex items-center justify-center">
                                         <Image
                                           src={icon}
-                                          width={16}
-                                          height={16}
+                                          width={14}
+                                          height={14}
                                           alt="User Icon"
                                           className="rounded-full"
                                         />
@@ -386,11 +387,11 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                                           href={`/ProfileUser/${
                                             comment.CommentUserId.split("_")[0]
                                           }`}
-                                          className="text-blue-400 hover:underline text-sm font-medium"
+                                          className="text-blue-400 hover:underline text-xs sm:text-sm font-medium"
                                         >
                                           {comment.CommentUserId.split("@")[0]}
                                         </Link>
-                                        <p className="text-gray-200 mt-1">
+                                        <p className="text-gray-200 text-xs sm:text-sm mt-1">
                                           {comment.TextComment}
                                         </p>
                                       </div>
@@ -404,7 +405,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                           <motion.p
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="text-gray-400 italic"
+                            className="text-gray-400 text-xs sm:text-sm italic"
                           >
                             No comments yet. Be the first to comment!
                           </motion.p>

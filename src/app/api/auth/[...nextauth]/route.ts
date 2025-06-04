@@ -8,6 +8,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { Connect } from "@/dbConfig/dbConfig";
 import bcrypt from "bcrypt";
 import User from "@/app/models/userModel";
+import { dom } from "@fortawesome/fontawesome-svg-core";
 
 interface UserCredentials {
   email: string;
@@ -48,6 +49,7 @@ const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 60 * 60, // 1 hour
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   providers: [
     GoogleProvider({
@@ -58,8 +60,10 @@ const authOptions: NextAuthOptions = {
           prompt: "consent",
           access_type: "offline",
           response_type: "code",
+          scope: "openid email profile", // Ensure profile scope is included
         },
       },
+      checks: ["pkce", "state"],
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -103,6 +107,18 @@ const authOptions: NextAuthOptions = {
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
+  cookies: {
+    sessionToken: {
+      name: "__Secure-next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+        domain: process.env.NEXTAUTH_COOKIE_DOMAIN || undefined, // Set domain if specified
+      },
+    },
+  },
   callbacks: {
     async signIn({ profile, account }) {
       if (account?.provider === "google" && profile) {
@@ -153,6 +169,12 @@ const authOptions: NextAuthOptions = {
         };
       }
       return session;
+    },
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+      // Prevent open redirects
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
   pages: {
