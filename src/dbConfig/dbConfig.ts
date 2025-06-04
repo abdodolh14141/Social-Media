@@ -12,13 +12,13 @@ export async function Connect(): Promise<void> {
   if (isConnected) return;
 
   try {
-    mongoose.connection.setMaxListeners(20);
-
     await mongoose.connect(mongoUrl, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      tls: false, // Enables TLS/SSL
-      tlsAllowInvalidCertificates: false, // Allow invalid certificates only if necessary
+      tlsAllowInvalidCertificates: false,
+      tlsAllowInvalidHostnames: false,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
     });
 
     isConnected = true;

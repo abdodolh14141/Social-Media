@@ -1,24 +1,13 @@
 "use client";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getSession } from "next-auth/react";
-import axios from "axios";
-import { Toaster, toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { CldImage } from "next-cloudinary";
-import icon from "../../../../../public/iconAccount.png";
+import axios from "axios";
 import Image from "next/image";
+import icon from "../../../../../public/iconAccount.png";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface Post {
-  _id: string;
-  Title: string;
-  Content: string;
-  Like: number;
-  AuthorName?: string;
-  PublicImage?: string;
-  IdUserCreated: string;
-  Comments?: Array<{ IdUser: string; CommentText: string }>;
-}
 
 interface Comment {
   idPost: string;
@@ -26,13 +15,6 @@ interface Comment {
   TextComment: string;
 }
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-// Animation variants
 const postVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -58,124 +40,17 @@ const buttonTap = {
   scale: 0.95,
 };
 
-// simple in-memory cache for posts and comments
-const dataCache = {
-  posts: null as Post[] | null,
-  comments: null as Comment[] | null,
-  user: null as User | null,
-  lastUpdated: 0,
-};
-
-export default function GetPosts() {
-  const [posts, setPosts] = useState<Post[]>([]);
+export default function FetchPostUser({ userId }: { userId: string }) {
+  const [posts, setPosts] = useState<any[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
-  const [user, setUser] = useState<User | null>(null);
+  const [isOwnAccount, setIsOwnAccount] = useState(false);
   const [expandedComments, setExpandedComments] = useState<{
     [key: string]: boolean;
   }>({});
 
-  // Fetch posts and comments with caching
-  const fetchPostsAndComments = useCallback(async () => {
-    const now = Date.now();
-    if (
-      dataCache.lastUpdated &&
-      now - dataCache.lastUpdated < 120000 &&
-      dataCache.posts
-    ) {
-      setPosts(dataCache.posts || []);
-      setComments(dataCache.comments || []);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [postRes, commentRes] = await Promise.all([
-        axios.get("/api/posts/fetchPosts"),
-        axios.get("/api/posts/fetchComments"),
-      ]);
-
-      if (postRes.status === 200 && commentRes.status === 200) {
-        const postsData = postRes.data.posts || [];
-        const commentsData = commentRes.data.comments || [];
-
-        // Update cache
-        dataCache.posts = postsData;
-        dataCache.comments = commentsData;
-        dataCache.lastUpdated = now;
-
-        setPosts(postsData);
-        setComments(commentsData);
-      }
-    } catch (error: any) {
-      toast.error(`Failed to load data. Please refresh the page => ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Delete post by ID
-  const handleDeletePost = useCallback(
-    async (postId: string) => {
-      try {
-        const res = await axios.delete(`/api/posts/fetchPosts`, {
-          data: { idPost: postId },
-        });
-
-        if (res.status === 200) {
-          await fetchPostsAndComments();
-          if (dataCache.posts) {
-            dataCache.posts = dataCache.posts.filter(
-              (post) => post._id !== postId
-            );
-          }
-          if (dataCache.comments) {
-            dataCache.comments = dataCache.comments.filter(
-              (comment) => comment.idPost !== postId
-            );
-          }
-          toast.success("Post deleted successfully!");
-        }
-      } catch (error: any) {
-        const errorMessage =
-          error.response?.data?.message || "An unexpected error occurred.";
-        toast.error(errorMessage);
-      }
-    },
-    [fetchPostsAndComments]
-  );
-
-  // Fetch user session with caching
-  const fetchUserSession = useCallback(async () => {
-    if (dataCache.user) {
-      setUser(dataCache.user);
-      return;
-    }
-    const session = await getSession();
-    if (session?.user) {
-      dataCache.user = session.user;
-      setUser(session.user);
-    }
-  }, []);
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchUserSession();
-    fetchPostsAndComments();
-  }, [fetchPostsAndComments, fetchUserSession]);
-
-  // Memoized formatted posts
-  const formattedPosts = useMemo(
-    () =>
-      posts.map((post) => ({
-        ...post,
-        AuthorName: post.AuthorName || "Anonymous",
-        Like: post.Like || 0,
-      })),
-    [posts]
-  );
-
-  // Memoized comments grouped by post ID
+  // Comments by post ID
   const commentsByPostId = useMemo(() => {
     return comments.reduce((acc, comment) => {
       if (!acc[comment.idPost]) {
@@ -186,20 +61,14 @@ export default function GetPosts() {
     }, {} as { [key: string]: Comment[] });
   }, [comments]);
 
-  // Handle like post
-  const handleLike = useCallback(async (postId: string) => {
+  const handleLike = async (postId: string) => {
     try {
       const session = await getSession();
       if (!session?.user?.email) {
         toast.error("You must be logged in to like a post.");
         return;
       }
-      // Update cache
-      if (dataCache.posts) {
-        dataCache.posts = dataCache.posts.map((post) =>
-          post._id === postId ? { ...post, Like: post.Like + 1 } : post
-        );
-      }
+
       setLoading(true);
       const { data } = await axios.post("/api/posts/addLike", {
         postId,
@@ -215,55 +84,65 @@ export default function GetPosts() {
       );
 
       toast.success(data.liked ? "Post liked!" : "Like removed.");
-    } catch (error: any) {
-      toast.error(`Error liking the post Error Message => ${error}`);
+    } catch (error) {
+      toast.error("Error liking the post. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  // Handle add comment
-  const handleAddComment = useCallback(
-    async (e: React.FormEvent, postId: string) => {
-      e.preventDefault();
+  const handleAddComment = async (e: React.FormEvent, postId: string) => {
+    e.preventDefault();
 
-      try {
-        const session = await getSession();
-        if (!session?.user?.email) {
-          toast.error("You must be logged in to comment.");
-          return;
-        }
-
-        setLoading(true);
-
-        const res = await axios.post("/api/posts/addComment", {
-          postId,
-          comment: newComment[postId],
-          userEmail: session.user.email,
-        });
-
-        if (res.status === 200) {
-          const newCommentData: Comment = {
-            idPost: postId,
-            CommentUserId: session.user.email || "",
-            TextComment: newComment[postId],
-          };
-
-          setComments((prev) => [...prev, newCommentData]);
-          setNewComment((prev) => ({ ...prev, [postId]: "" }));
-
-          toast.success("Comment added successfully!");
-        } else {
-          toast.error(res.data.message || "Failed to add comment.");
-        }
-      } catch (error: any) {
-        toast.error(`Error adding comment Error : ${error}`);
-      } finally {
-        setLoading(false);
+    try {
+      const session = await getSession();
+      if (!session?.user?.email) {
+        toast.error("You must be logged in to comment.");
+        return;
       }
-    },
-    [newComment]
-  );
+
+      setLoading(true);
+
+      const res = await axios.post("/api/posts/addComment", {
+        postId,
+        comment: newComment[postId],
+        userEmail: session.user.email,
+      });
+
+      if (res.status === 200) {
+        setComments((prev) => [
+          ...prev,
+          {
+            idPost: postId,
+            CommentUserId: session.user?.email || "",
+            TextComment: newComment[postId],
+          },
+        ]);
+        setNewComment((prev) => ({ ...prev, [postId]: "" }));
+        toast.success("Comment added successfully!");
+      } else {
+        toast.error(res.data.message || "Failed to add comment.");
+      }
+    } catch (error) {
+      toast.error("Error adding comment. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const res = await axios.post("/api/posts/deletePost", { postId });
+      if (res.status === 200) {
+        setPosts((prev) => prev.filter((post) => post._id !== postId));
+        toast.success("Post deleted successfully.");
+      } else {
+        toast.error(res.data.message || "Failed to delete post.");
+      }
+    } catch (error) {
+      toast.error("Error deleting post. Please try again.");
+    }
+  };
 
   const toggleComments = (postId: string) => {
     setExpandedComments((prev) => ({
@@ -272,10 +151,47 @@ export default function GetPosts() {
     }));
   };
 
+  const fetchPostsAndComments = useCallback(async () => {
+    try {
+      const [postRes, commentRes] = await Promise.all([
+        axios.post("/api/posts/getPostsUser", { IdUser: userId }),
+        axios.get("/api/posts/fetchComments"),
+      ]);
+      const session = await getSession();
+      if (session?.user?.email) {
+        setIsOwnAccount(session?.user?.id === userId);
+      }
+      setPosts(postRes.data.posts || []);
+      setComments(commentRes.data.comments || []);
+    } catch (error) {
+      toast.error("Failed to load posts and comments.");
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchPostsAndComments();
+    }
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       <Toaster position="top-center" richColors />
-      <div className="w-full px-4 md:px-8 lg:px-16 py-8">
+
+      {/* User Posts */}
+      <div className="postsUser w-full px-4 md:px-8 lg:px-16 py-8">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -285,26 +201,18 @@ export default function GetPosts() {
           Posts
         </motion.h1>
 
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
-            />
-          </div>
-        ) : formattedPosts.length === 0 ? (
+        {posts.length === 0 ? (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-gray-400 text-center text-xl py-12"
           >
-            No posts found.
+            No posts found for this user.
           </motion.p>
         ) : (
           <div className="grid gap-8">
             <AnimatePresence>
-              {formattedPosts.map((post) => (
+              {posts.map((post) => (
                 <motion.div
                   key={post._id}
                   variants={postVariants}
@@ -314,7 +222,7 @@ export default function GetPosts() {
                   layout
                   className="p-6 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl shadow-2xl border border-gray-700"
                 >
-                  {user && user.id === post.IdUserCreated && (
+                  {isOwnAccount && (
                     <motion.div className="flex justify-end">
                       <motion.button
                         whileHover={buttonHover}
@@ -342,7 +250,6 @@ export default function GetPosts() {
                       <Link
                         href={`/ProfileUser/${post.IdUserCreated}`}
                         className="text-blue-400 font-semibold hover:underline"
-                        prefetch={false}
                       >
                         {post.AuthorName}
                       </Link>
@@ -369,8 +276,6 @@ export default function GetPosts() {
                         width="800"
                         height="400"
                         className="w-full h-auto object-cover transition-transform duration-500 hover:scale-105"
-                        priority={false}
-                        loading="lazy"
                       />
                     </motion.div>
                   )}
@@ -459,7 +364,7 @@ export default function GetPosts() {
                               {commentsByPostId[post._id].map(
                                 (comment, idx) => (
                                   <motion.div
-                                    key={`${comment.idPost}-${idx}`}
+                                    key={idx}
                                     variants={commentVariants}
                                     initial="hidden"
                                     animate="visible"
@@ -474,7 +379,6 @@ export default function GetPosts() {
                                           height={16}
                                           alt="User Icon"
                                           className="rounded-full"
-                                          loading="lazy"
                                         />
                                       </div>
                                       <div>
@@ -483,7 +387,6 @@ export default function GetPosts() {
                                             comment.CommentUserId.split("_")[0]
                                           }`}
                                           className="text-blue-400 hover:underline text-sm font-medium"
-                                          prefetch={false}
                                         >
                                           {comment.CommentUserId.split("@")[0]}
                                         </Link>

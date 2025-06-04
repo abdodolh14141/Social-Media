@@ -6,7 +6,7 @@ import NewPost from "../newPost/newPage";
 import GetPosts from "../fetchPosts/getPosts";
 import { getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Account from "@/app/searchAccounts/page";
+import SearchAccount from "@/app/searchAccounts/page";
 import About from "@/app/about/page";
 
 export default function HeroForm() {
@@ -29,7 +29,7 @@ export default function HeroForm() {
   return (
     <>
       <Toaster />
-      <Account />
+      <SearchAccount />
 
       <main className="w-full mx-auto p-6">
         {isAuthenticated ? (
@@ -37,13 +37,7 @@ export default function HeroForm() {
             <NewPost />
           </>
         ) : (
-          <div className="my-5">
-            <h2 className="text-2xl text-center text-white font-bold m-3 p-3">
-              Login to React World And Social And Add Posts And Comments And
-              Like Posts And Follow Users And More
-            </h2>{" "}
-            <hr className="my-8 border-t-8 border-black rounded-md shadow-md w-full" />
-          </div>
+          <span></span>
         )}
 
         <div>
