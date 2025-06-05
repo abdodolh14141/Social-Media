@@ -42,14 +42,11 @@ export default function Contact() {
     <div className="flex items-center justify-center py-5 rounded-lg px-4 sm:px-6 lg:px-8 bg-opacity-75 bg-gray-100 shadow-xl transition duration-500 ease-in-out hover:bg-gray-200">
       <Toaster />
       <div className="w-full max-w-6xl rounded-lg p-8">
-        {/* Heading */}
         <h1 className="text-4xl font-bold text-center text-gray-900 mb-8">
           Get in Touch
         </h1>
 
-        {/* Form */}
         <form onSubmit={report} className="space-y-8">
-          {/* Email Input */}
           <div>
             <label
               htmlFor="email"
@@ -61,20 +58,16 @@ export default function Contact() {
               type="email"
               id="email"
               placeholder="Enter Your Email"
+              value={formReport.email}
               onChange={(e) => {
                 const email = e.target.value;
-                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                  setReport({ ...formReport, email });
-                } else {
-                  toast.error("Invalid email format");
-                }
+                setReport({ ...formReport, email });
               }}
               required
               className="mt-2 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-3"
             />
           </div>
 
-          {/* Message Textarea */}
           <div>
             <label
               htmlFor="message"
@@ -84,6 +77,7 @@ export default function Contact() {
             </label>
             <textarea
               id="message"
+              value={formReport.message}
               onChange={(e) =>
                 setReport({ ...formReport, message: e.target.value })
               }
@@ -94,11 +88,11 @@ export default function Contact() {
             ></textarea>
           </div>
 
-          {/* Submit Button */}
           <div>
             <button
               type="submit"
               className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300"
+              disabled={loading}
             >
               {loading ? "Sending..." : "Send Message"}
             </button>
