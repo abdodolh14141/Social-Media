@@ -5,9 +5,9 @@ import NextAuth, {
 } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { Connect } from "@/dbConfig/dbConfig";
+import { Connect } from "../../../../dbConfig/dbConfig";
 import bcrypt from "bcrypt";
-import User from "@/app/models/userModel";
+import User from "../../../models/userModel";
 import { dom } from "@fortawesome/fontawesome-svg-core";
 
 interface UserCredentials {

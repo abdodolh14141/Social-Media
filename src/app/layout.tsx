@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "./components/nav/Header";
 import LastNav from "./components/lastNav/headerLast";
-import Provider from "@/context/Provider";
+import Provider from "../../src/context/Provider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 export const metadata: Metadata = {
