@@ -341,7 +341,6 @@ export default function GetPosts() {
                       <Link
                         href={`/ProfileUser/${post.IdUserCreated}`}
                         className="text-blue-400 font-semibold hover:underline"
-                        prefetch={false}
                       >
                         {post.AuthorName}
                       </Link>
