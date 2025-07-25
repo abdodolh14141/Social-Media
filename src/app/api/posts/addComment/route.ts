@@ -7,31 +7,34 @@ import { NextRequest, NextResponse } from "next/server";
 interface ReqData {
   postId: string;
   comment: string;
-  userEmail: string;
+  name: string;
+  userId: string;
 }
 
 // Helper function to validate request data
 const validateRequestData = (data: ReqData): string | null => {
   if (!data.postId) return "Post ID is required.";
   if (!data.comment) return "Comment text is required.";
-  if (!data.userEmail) return "User email is required.";
+  if (!data.userId) return "User email is required.";
   return null;
 };
 
 export async function POST(req: NextRequest) {
   try {
     // Parse and validate the request body
-    const { postId, comment, userEmail }: ReqData = await req.json();
-    const validationError = validateRequestData({ postId, comment, userEmail });
+    const { postId, name, comment, userId }: ReqData = await req.json();
+    const validationError = validateRequestData({
+      postId,
+      comment,
+      name,
+      userId,
+    });
     if (validationError) {
       return NextResponse.json(
         { success: false, message: validationError },
         { status: 400 }
       );
     }
-
-    // Normalize the email address
-    const normalizedEmail = userEmail.trim().toLowerCase();
 
     // Connect to the database
     await Connect();
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if the user exists
-    const user = await User.findOne({ Email: normalizedEmail });
+    const user = await User.findOne({ _id: userId });
     if (!user) {
       return NextResponse.json(
         { success: false, message: "User not found." },
@@ -54,11 +57,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const uniqIdUser = `${user._id}_${post._id}`;
-
     const newComment = new Comment({
       idPost: postId,
-      CommentUserId: uniqIdUser,
+      Name: name,
+      UserId: userId,
       TextComment: comment,
     });
 
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
         message: "Comment added successfully.",
         newComment,
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error) {
     console.error("Error adding comment:", error);

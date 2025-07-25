@@ -9,6 +9,8 @@ import Image from "next/image";
 import icon from "../../../../../public/iconAccount.png";
 import { motion, AnimatePresence } from "framer-motion";
 
+
+
 interface Comment {
   idPost: string;
   CommentUserId: string;
@@ -20,7 +22,7 @@ const postVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: "easeOut" },
+    transition: { duration: 0.3, ease: ["easeOut"] },
   },
   exit: { opacity: 0, y: -20 },
 };
@@ -191,7 +193,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
       <Toaster position="top-center" richColors />
 
       {/* Mobile-optimized container */}
-      <div className="w-full px-2 sm:px-4 py-4">
+      <div className="px-2 sm:px-4 py-4 w-full p-2">
         <motion.h1
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -210,7 +212,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
             No posts found for this user.
           </motion.p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 p-5 m-2">
             <AnimatePresence>
               {posts.map((post) => (
                 <motion.div
@@ -220,7 +222,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                   animate="visible"
                   exit="exit"
                   layout
-                  className="p-4 sm:p-5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-lg border border-gray-700"
+                  className="p-5 sm:p-0 m-5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-lg border border-gray-700"
                 >
                   {isOwnAccount && (
                     <motion.div className="flex justify-end mb-2">
@@ -235,7 +237,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                     </motion.div>
                   )}
 
-                  <div className="flex items-center mb-3">
+                  <div className="flex items-center mb-3 p-3">
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-700 flex items-center justify-center mr-2">
                       <Image
                         src={icon}
@@ -281,7 +283,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                     </motion.div>
                   )}
 
-                  <div className="mb-4">
+                  <div className="mb-4 p-3">
                     <h2 className="text-white text-sm sm:text-base font-semibold mb-1">
                       Content:
                     </h2>
@@ -290,7 +292,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mb-4">
+                  <div className="flex flex-col sm:flex-row p-3 justify-between items-center gap-2 mb-4">
                     <motion.button
                       whileHover={buttonHover}
                       whileTap={buttonTap}
@@ -321,7 +323,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                     onSubmit={(e) => handleAddComment(e, post._id)}
                     className="mb-4"
                   >
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex flex-col p-3 sm:flex-row gap-2">
                       <input
                         type="text"
                         value={newComment[post._id] || ""}
@@ -383,14 +385,6 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                                         />
                                       </div>
                                       <div>
-                                        <Link
-                                          href={`/ProfileUser/${
-                                            comment.CommentUserId.split("_")[0]
-                                          }`}
-                                          className="text-blue-400 hover:underline text-xs sm:text-sm font-medium"
-                                        >
-                                          {comment.CommentUserId.split("@")[0]}
-                                        </Link>
                                         <p className="text-gray-200 text-xs sm:text-sm mt-1">
                                           {comment.TextComment}
                                         </p>

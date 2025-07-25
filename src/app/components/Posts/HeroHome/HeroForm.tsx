@@ -6,8 +6,8 @@ import NewPost from "../newPost/newPage";
 import GetPosts from "../fetchPosts/getPosts";
 import { getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import SearchAccount from "@/app/searchAccounts/page";
-import About from "@/app/about/page";
+import SearchAccount from "../../../searchAccounts/page";
+import About from "../../../about/page";
 
 export default function HeroForm() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

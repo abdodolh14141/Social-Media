@@ -2,7 +2,7 @@ import User from "@/app/models/userModel";
 import { Connect } from "@/dbConfig/dbConfig";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth"; // Use getServerSession instead of getSession for server-side session
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/app/libs/auth/option";
 
 export async function POST(req: NextRequest) {
   try {

@@ -4,8 +4,9 @@ import axios from "axios";
 import { useParams } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { getSession } from "next-auth/react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import icon from "../../../../public/iconAccount.png";
 import FetchPostUser from "@/app/components/Posts/fetchPosts/fetchPostUser";
 
@@ -21,16 +22,41 @@ interface ProfileData {
   Followers: string[];
 }
 
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+    },
+  },
+  hover: {
+    scale: 1.03,
+    transition: {
+      duration: 0.2,
+    },
+  },
+};
+
 export default function ProfileUser() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true); // Loading state for profile data
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [isOwnAccount, setIsOwnAccount] = useState(false);
-  const [followers, setFollowers] = useState<string[]>([]);
   const { id: userId } = useParams();
-
-  // Check if the user is the owner of the account
 
   const fetchProfileData = useCallback(async () => {
     setLoadingProfile(true);
@@ -65,23 +91,6 @@ export default function ProfileUser() {
       toast.error("Failed to load profile.");
     } finally {
       setLoadingProfile(false);
-    }
-  }, [userId]);
-
-  const fetchFollowers = useCallback(async () => {
-    try {
-      const res = await axios.post("/api/users/getFollowers", {
-        AccountId: userId,
-      });
-
-      if (res.status === 200 && res.data.followers) {
-        setFollowers(res.data.followers);
-      } else {
-        toast.error(res.data?.message || "Failed to fetch followers.");
-      }
-    } catch (error) {
-      console.error("Error fetching followers:", error);
-      toast.error("Failed to fetch followers. Please try again later.");
     }
   }, [userId]);
 
@@ -128,7 +137,7 @@ export default function ProfileUser() {
 
   useEffect(() => {
     if (userId) {
-      fetchProfileData().then(() => fetchFollowers());
+      fetchProfileData();
     }
   }, [userId, fetchProfileData]);
 
@@ -158,7 +167,7 @@ export default function ProfileUser() {
                 width={85}
                 height={80}
               />
-              <ul className="shadow-lg m-5 rounded-lg p-6 space-y-4 max-w-3xl mx-auto">
+              <ul className="shadow-lg m-3 rounded-lg p-4 space-y-4 max-w-2xl mx-auto">
                 <li className="flex flex-col items-center">
                   <h1 className="text-4xl font-bold text-gray-900 mb-4">
                     {profileData?.name || "Guest"}
@@ -182,42 +191,78 @@ export default function ProfileUser() {
             <div className="mt-4 w-full flex flex-col items-center">
               <p className="text-xl text-gray-600">
                 Followers:{" "}
-                <span className="font-bold text-gray-800">
+                <motion.span
+                  className="font-bold text-gray-800"
+                  key={profileData?.follow}
+                  initial={{ scale: 1.2 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
                   {profileData?.follow}
-                </span>
+                </motion.span>
               </p>
               {isOwnAccount ? (
-                <div className="text-lg font-bold p-2 m-2 text-white rounded-md shadow-lg w-full mx-auto">
-                  {profileData && profileData.Followers.length > 0 ? (
-                    profileData?.Followers?.map((follower, index) => (
-                      <ul>
-                        <li>
-                          <h1>
-                            {" "}
-                            <p>Followers:</p>
-                          </h1>
-                          <p key={index} className="text-gray-700 text-center">
-                            {index + 1} : {follower.split("@")[0]}
-                          </p>
-                        </li>
-                      </ul>
-                    ))
-                  ) : (
-                    <p className="text-gray-500">No Followers Yet.</p>
-                  )}
+                <div className="w-full max-w-md">
+                  <AnimatePresence>
+                    {profileData && profileData.Followers.length > 0 ? (
+                      <motion.div
+                        className="bg-gray-100 rounded-lg p-4 mt-2 w-full"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="show"
+                      >
+                        <motion.h3
+                          className="text-lg font-semibold text-center mb-2"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.2 }}
+                        >
+                          Your Followers
+                        </motion.h3>
+                        <motion.ul className="space-y-2">
+                          {profileData.Followers.map((follower, index) => (
+                            <motion.li
+                              key={`${follower}-${index}`}
+                              className="bg-white p-3 rounded-md shadow-sm"
+                              variants={itemVariants}
+                              whileHover="hover"
+                            >
+                              <p className="text-gray-700">
+                                <span className="font-medium">
+                                  {index + 1}.
+                                </span>{" "}
+                                {follower.split("@")[0]}
+                              </p>
+                            </motion.li>
+                          ))}
+                        </motion.ul>
+                      </motion.div>
+                    ) : (
+                      <motion.p
+                        className="text-gray-500 text-center py-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        No Followers Yet.
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
               ) : (
-                <button
+                <motion.button
                   className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-md shadow-lg transition-all duration-200 disabled:opacity-50"
                   onClick={handleFollow}
                   disabled={loading}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   {loading
                     ? "Processing..."
                     : isFollowing
                     ? "Unfollow"
                     : "Follow"}
-                </button>
+                </motion.button>
               )}
             </div>
 

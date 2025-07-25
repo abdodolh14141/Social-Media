@@ -13,8 +13,6 @@ export async function Connect(): Promise<void> {
 
   try {
     await mongoose.connect(mongoUrl, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       tlsAllowInvalidCertificates: false,
       tlsAllowInvalidHostnames: false,
       serverSelectionTimeoutMS: 30000,
