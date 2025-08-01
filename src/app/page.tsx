@@ -1,4 +1,4 @@
-import HeroForm from "@/app/components/Posts/HeroHome/HeroForm";
+import HeroForm from "./components/Posts/HeroHome/HeroForm";
 
 export default function Home() {
   return (
