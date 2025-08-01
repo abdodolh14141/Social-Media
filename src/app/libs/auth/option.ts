@@ -1,8 +1,8 @@
-import { NextAuthOptions } from "next-auth";
+import { type NextAuthOptions } from "next-auth";
 import { providers } from "./providers";
 import { callbacks } from "./callbacks";
 // Ensure the callbacks are typed correctly for NextAuth
-export const authOptions: NextAuthOptions = {
+export const AuthOptions: NextAuthOptions = {
   providers,
   callbacks: callbacks as Partial<import("next-auth").CallbacksOptions>, // Type assertion to satisfy NextAuth
   session: {

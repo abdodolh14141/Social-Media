@@ -1,8 +1,8 @@
 import NextAuth from "next-auth";
-import { authOptions } from "@/app/libs/auth/option";
+import { AuthOptions } from "@/app/libs/auth/option";
 import { validateAuthEnvironment } from "../../../libs/auth/validateEnv";
 
 validateAuthEnvironment();
 
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST, authOptions };
+const handler = NextAuth(AuthOptions);
+export { handler as GET, handler as POST, AuthOptions };
