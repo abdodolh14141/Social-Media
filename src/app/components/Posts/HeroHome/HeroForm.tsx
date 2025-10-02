@@ -28,8 +28,10 @@ export default function HeroForm() {
 
   return (
     <>
-      <Toaster />
-      <SearchAccount />
+      <Toaster position="top-center" richColors />
+      <div>
+        <SearchAccount />
+      </div>
 
       <main className="w-full mx-auto p-6">
         {isAuthenticated ? (

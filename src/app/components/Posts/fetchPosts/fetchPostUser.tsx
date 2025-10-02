@@ -9,8 +9,6 @@ import Image from "next/image";
 import icon from "../../../../../public/iconAccount.png";
 import { motion, AnimatePresence } from "framer-motion";
 
-
-
 interface Comment {
   idPost: string;
   CommentUserId: string;
@@ -193,7 +191,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
       <Toaster position="top-center" richColors />
 
       {/* Mobile-optimized container */}
-      <div className="px-2 sm:px-4 py-4 w-full p-2">
+      <div className="px-2 sm:px-4 py-4 p-2 w-full">
         <motion.h1
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -222,7 +220,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
                   animate="visible"
                   exit="exit"
                   layout
-                  className="p-5 sm:p-0 m-5 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-lg border border-gray-700"
+                  className="p-5 sm:p-0 m-5 max-w-8xl bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-lg border border-gray-700"
                 >
                   {isOwnAccount && (
                     <motion.div className="flex justify-end mb-2">

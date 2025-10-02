@@ -7,8 +7,10 @@ import Link from "next/link";
 import { CldImage } from "next-cloudinary";
 import iconAccount from "../../../../../public/iconAccount.png";
 import Like from "../../../../../public/Like.png";
+import Liked from "../../../../../public/Like.png"; // Add a filled like icon for liked state
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import useSWR from "swr";
 
 // Types for Posts, Comments, and User
 interface Post {
@@ -20,6 +22,7 @@ interface Post {
   PublicImage?: string;
   IdUserCreated: string;
   Comments?: Array<{ IdUser: string; CommentText: string }>;
+  likedByUsers?: string[]; // Add this field to track which users liked the post
 }
 
 interface Comment {
@@ -62,81 +65,61 @@ const buttonTap = {
   scale: 0.95,
 };
 
+const fetcher = (url: string) => axios.get(url).then((res) => res.data);
+
 export default function GetPosts() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(false);
+  // SWR hooks for posts and comments
+  const {
+    data: postsData,
+    error: postsError,
+    mutate: mutatePosts,
+  } = useSWR("/api/posts/fetchPosts", fetcher);
+  const {
+    data: commentsData,
+    error: commentsError,
+    mutate: mutateComments,
+  } = useSWR("/api/posts/fetchComments", fetcher);
+
+  const posts: Post[] = postsData?.posts || [];
+  const comments: Comment[] = commentsData?.comments || [];
+  const loading = !postsData && !postsError;
+
   const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
   const [user, setUser] = useState<User | null>(null);
   const [expandedComments, setExpandedComments] = useState<{
     [key: string]: boolean;
   }>({});
+  const [actionLoading, setActionLoading] = useState(false); // for like/comment/delete button disables
+  const [userLikes, setUserLikes] = useState<{ [key: string]: boolean }>({}); // Track which posts user has liked
 
-  // Fetch posts and comments
-  const fetchPostsAndComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [postRes, commentRes] = await Promise.all([
-        axios.get("/api/posts/fetchPosts"),
-        axios.get("/api/posts/fetchComments"),
-      ]);
+  // Fetch user session once on mount
+  useEffect(() => {
+    async function fetchUserSession() {
+      const session = await getSession();
+      if (session?.user) {
+        setUser(session.user as User);
 
-      if (postRes.status === 200 && commentRes.status === 200) {
-        setPosts(postRes.data.posts || []);
-        setComments(commentRes.data.comments || []);
+        // After user is set, check which posts they've liked
+        if (session.user.email) {
+          try {
+            const { data } = await axios.get("/api/posts/getUserLikes", {
+              params: { userEmail: session.user.email },
+            });
+
+            // Create a mapping of post IDs to like status
+            const likesMap: { [key: string]: boolean } = {};
+            data.likedPosts.forEach((postId: string) => {
+              likesMap[postId] = true;
+            });
+
+            setUserLikes(likesMap);
+          } catch (error) {
+            console.error("Failed to fetch user likes:", error);
+          }
+        }
       }
-    } catch (error: any) {
-      toast.error(`Failed to load data: ${error.message}`);
-    } finally {
-      setLoading(false);
     }
-  }, []);
-
-  // Delete post by ID
-  const handleDeletePost = useCallback(async (postId: string) => {
-    try {
-      const res = await axios.delete(`/api/posts/fetchPosts`, {
-        data: { idPost: postId },
-      });
-
-      if (res.status === 200) {
-        setPosts((prevPosts) =>
-          prevPosts.filter((post) => post._id !== postId)
-        );
-        setComments((prevComments) =>
-          prevComments.filter((comment) => comment.idPost !== postId)
-        );
-        toast.success("Post deleted successfully!");
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to delete post");
-    }
-  }, []);
-
-  // Delete comment by ID
-  const handleDeleteComment = useCallback(async (commentId: string) => {
-    try {
-      const res = await axios.delete(`/api/posts/fetchComments`, {
-        data: { commentId },
-      });
-
-      if (res.status === 200) {
-        setComments((prevComments) =>
-          prevComments.filter((comment) => comment._id !== commentId)
-        );
-        toast.success("Comment deleted successfully!");
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to delete comment");
-    }
-  }, []);
-
-  // Fetch user session
-  const fetchUserSession = useCallback(async () => {
-    const session = await getSession();
-    if (session?.user) {
-      setUser(session.user as User);
-    }
+    fetchUserSession();
   }, []);
 
   // Memoized formatted posts
@@ -146,8 +129,9 @@ export default function GetPosts() {
         ...post,
         AuthorName: post.AuthorName || "Anonymous",
         Like: post.Like || 0,
+        isLikedByUser: userLikes[post._id] || false,
       })),
-    [posts]
+    [posts, userLikes]
   );
 
   // Memoized comments grouped by post ID
@@ -162,35 +146,55 @@ export default function GetPosts() {
   }, [comments]);
 
   // Handle like post
-  const handleLike = useCallback(async (postId: string) => {
-    try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to like a post.");
-        return;
+  const handleLike = useCallback(
+    async (postId: string, isCurrentlyLiked: boolean) => {
+      try {
+        const session = await getSession();
+        if (!session?.user?.email) {
+          toast.error("You must be logged in to like a post.");
+          return;
+        }
+
+        setActionLoading(true);
+        const { data } = await axios.post("/api/posts/addLike", {
+          postId,
+          userEmail: session.user.email,
+        });
+
+        // Update user likes state
+        setUserLikes((prev) => ({
+          ...prev,
+          [postId]: data.liked,
+        }));
+
+        // Update posts cache optimistically
+        mutatePosts(
+          (posts: Post[] = []) =>
+            posts.map((post) =>
+              post._id === postId
+                ? {
+                    ...post,
+                    Like: data.liked ? post.Like + 1 : post.Like - 1,
+                    likedByUsers: data.liked
+                      ? [...(post.likedByUsers || []), session?.user?.email]
+                      : (post.likedByUsers || []).filter(
+                          (email: string) => email !== session?.user?.email
+                        ),
+                  }
+                : post
+            ),
+          false
+        );
+
+        toast.success(data.liked ? "Post liked!" : "Like removed.");
+      } catch (error: any) {
+        toast.error(`Error: ${error.message}`);
+      } finally {
+        setActionLoading(false);
       }
-
-      setLoading(true);
-      const { data } = await axios.post("/api/posts/addLike", {
-        postId,
-        userEmail: session.user.email,
-      });
-
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId
-            ? { ...post, Like: data.liked ? post.Like + 1 : post.Like - 1 }
-            : post
-        )
-      );
-
-      toast.success(data.liked ? "Post liked!" : "Like removed.");
-    } catch (error: any) {
-      toast.error(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [mutatePosts]
+  );
 
   // Handle add comment
   const handleAddComment = useCallback(
@@ -209,7 +213,7 @@ export default function GetPosts() {
           return;
         }
 
-        setLoading(true);
+        setActionLoading(true);
         const res = await axios.post("/api/posts/addComment", {
           postId,
           name: session.user.name,
@@ -226,17 +230,90 @@ export default function GetPosts() {
             Name: session.user.name || "Unknown",
           };
 
-          setComments((prev) => [...prev, newCommentData]);
+          // Update comments cache optimistically
+          mutateComments(
+            (comments: Comment[] = []) => [...comments, newCommentData],
+            false
+          );
+
           setNewComment((prev) => ({ ...prev, [postId]: "" }));
           toast.success("Comment added successfully!");
         }
       } catch (error: any) {
         toast.error(`Error: ${error.message}`);
       } finally {
-        setLoading(false);
+        setActionLoading(false);
       }
     },
-    [newComment]
+    [newComment, mutateComments]
+  );
+
+  // Delete post by ID
+  const handleDeletePost = useCallback(
+    async (postId: string) => {
+      try {
+        setActionLoading(true);
+        const res = await axios.delete(`/api/posts/fetchPosts`, {
+          data: { idPost: postId },
+        });
+
+        if (res.status === 200) {
+          // Update posts and comments cache
+          mutatePosts(
+            (posts: Post[] = []) => posts.filter((post) => post._id !== postId),
+            false
+          );
+          mutateComments(
+            (comments: Comment[] = []) =>
+              comments.filter((comment) => comment.idPost !== postId),
+            false
+          );
+
+          // Remove from user likes
+          setUserLikes((prev) => {
+            const newLikes = { ...prev };
+            delete newLikes[postId];
+            return newLikes;
+          });
+
+          toast.success("Post deleted successfully!");
+        }
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || "Failed to delete post");
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [mutatePosts, mutateComments]
+  );
+
+  // Delete comment by ID
+  const handleDeleteComment = useCallback(
+    async (commentId: string) => {
+      try {
+        setActionLoading(true);
+        const res = await axios.delete(`/api/posts/fetchComments`, {
+          data: { commentId },
+        });
+
+        if (res.status === 200) {
+          // Update comments cache
+          mutateComments(
+            (comments: Comment[] = []) =>
+              comments.filter((comment) => comment._id !== commentId),
+            false
+          );
+          toast.success("Comment deleted successfully!");
+        }
+      } catch (error: any) {
+        toast.error(
+          error.response?.data?.message || "Failed to delete comment"
+        );
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [mutateComments]
   );
 
   const toggleComments = (postId: string) => {
@@ -246,11 +323,13 @@ export default function GetPosts() {
     }));
   };
 
-  // Initial data fetch
-  useEffect(() => {
-    fetchUserSession();
-    fetchPostsAndComments();
-  }, [fetchPostsAndComments, fetchUserSession]);
+  if (postsError || commentsError) {
+    return (
+      <div className="text-center py-16 text-red-600">
+        Failed to load posts or comments.
+      </div>
+    );
+  }
 
   return (
     <>
@@ -266,7 +345,7 @@ export default function GetPosts() {
             Community Posts
           </motion.h1>
 
-          {loading && !posts.length ? (
+          {loading ? (
             <div className="flex justify-center items-center h-64">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -308,6 +387,7 @@ export default function GetPosts() {
                           whileTap={buttonTap}
                           onClick={() => handleDeletePost(post._id)}
                           className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-colors"
+                          disabled={actionLoading}
                         >
                           Delete Post
                         </motion.button>
@@ -360,13 +440,22 @@ export default function GetPosts() {
                       <motion.button
                         whileHover={buttonHover}
                         whileTap={buttonTap}
-                        onClick={() => handleLike(post._id)}
-                        className={`flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full shadow-md hover:shadow-lg transition ${
-                          loading ? "opacity-50 cursor-not-allowed" : ""
+                        onClick={() => handleLike(post._id, post.isLikedByUser)}
+                        className={`flex items-center gap-2 px-6 py-2 ${
+                          post.isLikedByUser
+                            ? "bg-red-500 hover:bg-red-600"
+                            : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                        } text-white rounded-full shadow-md hover:shadow-lg transition ${
+                          actionLoading ? "opacity-50 cursor-not-allowed" : ""
                         }`}
-                        disabled={loading}
+                        disabled={actionLoading}
                       >
-                        <Image src={Like} alt="Like" width={24} height={24} />
+                        <Image
+                          src={post.isLikedByUser ? Liked : Like}
+                          alt="Like"
+                          width={24}
+                          height={24}
+                        />
                         <span>{post.Like}</span>
                       </motion.button>
 
@@ -401,15 +490,16 @@ export default function GetPosts() {
                           placeholder="Write a comment..."
                           className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none"
                           required
+                          disabled={actionLoading}
                         />
                         <motion.button
                           whileHover={buttonHover}
                           whileTap={buttonTap}
                           type="submit"
                           className={`px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-colors ${
-                            loading ? "opacity-50 cursor-not-allowed" : ""
+                            actionLoading ? "opacity-50 cursor-not-allowed" : ""
                           }`}
-                          disabled={loading}
+                          disabled={actionLoading}
                         >
                           Post
                         </motion.button>
@@ -441,7 +531,7 @@ export default function GetPosts() {
                                     className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg shadow-sm relative"
                                   >
                                     <div className="flex gap-4">
-                                      <div className="flex-shrink-0">
+                                      <div className="flex-shrink-0 relative">
                                         {comment.UserId === user?.id && (
                                           <motion.button
                                             whileHover={{ scale: 1.1 }}
@@ -452,6 +542,7 @@ export default function GetPosts() {
                                             className="text-red-500 hover:text-red-700 p-1 right-1 absolute top-1"
                                             title="Delete comment"
                                             aria-label="Delete comment"
+                                            disabled={actionLoading}
                                           >
                                             <svg
                                               xmlns="http://www.w3.org/2000/svg"
@@ -481,7 +572,6 @@ export default function GetPosts() {
                                               alt="User Icon"
                                               className="object-cover"
                                             />
-                                            <p> {comment.Name}</p>
                                           </div>
                                         </Link>
                                       </div>

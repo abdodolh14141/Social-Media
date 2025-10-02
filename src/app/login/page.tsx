@@ -99,7 +99,7 @@ export default function LoginPage() {
           <LoginWithGoogle />
           <div className="p-2 flex text-green-600 text-lg justify-around">
             <Link href={"/signin"}>I Don't Have Account</Link>
-            <Link href={"/restPassword"}>Forget Password</Link>
+            <Link href={"/forgot-password"}>Forget Password</Link>
           </div>
         </div>
       </div>
