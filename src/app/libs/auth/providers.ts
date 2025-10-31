@@ -40,7 +40,7 @@ export const providers = [
         await Connect();
 
         const user = await User.findOne({
-          Email: credentials.email.toLowerCase(),
+          Email: credentials.email,
         });
         if (!user) {
           throw new Error("No user found with this email");

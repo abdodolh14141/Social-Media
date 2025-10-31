@@ -19,7 +19,7 @@ export const callbacks = {
         await Connect();
 
         const existingUser = await User.findOne({
-          Email: profile.email.toLowerCase(),
+          Email: profile.email,
         });
 
         if (!existingUser) {

@@ -16,6 +16,7 @@
     "jsx": "preserve",
     "incremental": true,
     "baseUrl": "./src",
+    "ignoreDeprecations": "6.0",
     "plugins": [
       {
         "name": "next"
