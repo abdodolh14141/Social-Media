@@ -1,36 +1,48 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+Social Media Platform
 
-First, run the development server:
+II. ✨ Core Features & Functionality
+The platform will include the following essential social networking features:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. User Authentication & Authorization:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Dual Login: Allow users to register and log in using traditional email/password methods or via Google/Gmail OAuth integration.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Secure Session Management: Implement JWT-based session handling using NextAuth.js for secure and persistent user sessions.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Content Creation & Interaction:
 
-## Learn More
+Post Creation: Authenticated users must be able to add new text and image posts to the feed.
 
-To learn more about Next.js, take a look at the following resources:
+Engagement: Users can like (toggle) and comment on any post.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Image Handling: Upload and store images securely using an external service like Cloudflare R2 or a similar cloud storage solution.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. User Profile & Social Graph:
 
-## Deploy on Vercel
+User Profile Page: Dedicated page displaying the user's information, their posts, and metrics (followers/following count).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Follow System: Implement a follower/following mechanism to build a social graph.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Search & Discovery:
+
+Search Bar: A dedicated account search bar allowing users to find other profiles by username or name.
+
+
+III. 🛠️ Technical Focus & Quality Goals
+These points elevate the project from a simple feature list to a focus on developer best practices and user performance:
+
+5. Performance Optimization:
+
+Fast Post Retrieval: Implement efficient data fetching and caching strategies (e.g., server-side rendering, memoization, optimized database queries) to achieve high-speed performance when fetching and displaying posts on the main feed.
+
+6. Code Quality & Maintainability:
+
+Clean Code Principles: Adhere to established principles (e.g., DRY, clear naming conventions, modular component structure) to ensure the codebase is clean, readable, and easy to maintain/scale.
+
+TypeScript (Recommended): Use TypeScript for better type safety and developer experience.
+
+7. Modern Development Stack (Implied):
+
+Next.js Features: Leverage Next.js features like API routes (or Server Actions) for the backend and React Server Components where appropriate for optimized performance.
