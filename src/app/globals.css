@@ -53,12 +53,6 @@ body {
   @apply bg-gray-100;
   margin: 0;
   padding: 0;
-  background: rgb(0, 0, 0);
-  background: radial-gradient(
-    circle,
-    rgba(0, 0, 0, 1) 11%,
-    rgba(91, 158, 69, 1) 30%,
-    rgba(7, 65, 158, 1) 88%,
-    rgba(0, 212, 255, 1) 100%
-  );
+  font-family: "Courier New", Courier, monospace;
+  background-color: #6231b1;
 }

@@ -13,7 +13,7 @@ interface Account {
   Email: string;
 }
 
-export default function Account() {
+export default function SearchAccount() {
   const [name, setName] = useState("");
   const [searchResults, setSearchResults] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export default function Account() {
       } finally {
         setLoading(false);
       }
-    }, 500),
+    }, 400),
     []
   );
 
@@ -56,9 +56,9 @@ export default function Account() {
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const value = e.target.value || ""; // Ensure value is a string
     setName(value);
-    debouncedSearch(value);
+    void debouncedSearch(value);
   };
 
   // Fetch session on component mount

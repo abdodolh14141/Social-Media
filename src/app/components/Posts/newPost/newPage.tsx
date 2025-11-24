@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from "react";
-import { getSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
 import { CldUploadWidget } from "next-cloudinary";
@@ -49,8 +47,8 @@ export default function NewPost() {
     try {
       setLoading(true);
 
-      const session = await getSession();
-      if (!session?.user?.email) {
+      const session = useSession();
+      if (!session.data || !session.data.user || !session.data.user.email) {
         toast.error("You must be logged in to create a post.");
         return;
       }
@@ -60,7 +58,7 @@ export default function NewPost() {
         title: newPostForm.title,
         content: newPostForm.content,
         ImageId: newPostForm.ImageId,
-        authorEmail: session.user.email,
+        authorEmail: session.data.user.email,
       });
 
       if (response.status === 201 || response.data.success) {
