@@ -5,7 +5,11 @@ const CommentSchema = new mongoose.Schema({
     type: String,
     required: [true, "Title is required"],
   },
-  CommentUserId: {
+  Name: {
+    type: String,
+    required: [true, "Name Is Required"],
+  },
+  UserId: {
     type: String,
     required: true,
   },

@@ -1,13 +1,29 @@
 "use client";
-
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { getSession } from "next-auth/react";
-import axios from "axios";
+import { useState, useMemo, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import axios, { AxiosError } from "axios";
 import { Toaster, toast } from "sonner";
-import Link from "next/link";
-import { CldImage } from "next-cloudinary";
-import icon from "../../../../../public/iconAccount.png";
-import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  useQueries,
+  UseQueryResult,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import { Loader2 } from "lucide-react";
+import { PostItem } from "../postItem/postItem";
+
+// --- Type Definitions ---
+interface Comment {
+  _id: string;
+  postId: string;
+  userId: string;
+  textComment: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface Post {
   _id: string;
@@ -17,303 +33,517 @@ interface Post {
   AuthorName?: string;
   PublicImage?: string;
   IdUserCreated: string;
-  Comments?: Array<{ IdUser: string; CommentText: string }>;
+  likedByUsers?: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface Comment {
-  idPost: string;
-  CommentUserId: string;
-  TextComment: string;
+interface FormattedPost extends Post {
+  isLikedByUser: boolean;
+  comments: Comment[];
 }
 
-interface User {
+interface UserSession {
   id: string;
   email: string;
   name: string;
 }
 
-export default function GetPosts() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
-  const [user, setUser] = useState<User | null>(null);
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  comment?: Comment;
+  comments?: Comment[];
+  posts?: Post[];
+  data?: T;
+}
 
-  // Fetch posts and comments
-  const fetchPostsAndComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [postRes, commentRes] = await Promise.all([
-        axios.get("/api/posts/fetchPosts"),
-        axios.get("/api/posts/fetchComments"),
-      ]);
+// --- Constants ---
+const ANIMATION_CONFIG = {
+  buttonHover: { scale: 1.02, transition: { duration: 0.2 } },
+  buttonTap: { scale: 0.98 },
+  fadeIn: { opacity: 0, y: 20 },
+  fadeInVisible: { opacity: 1, y: 0 },
+} as const;
 
-      if (postRes.status === 200 && commentRes.status === 200) {
-        setPosts(postRes.data.posts || []);
-        setComments(commentRes.data.comments || []);
-      } else {
-        toast.error("Failed to load data. Please refresh the page.");
+const QUERY_CONFIG = {
+  POSTS_KEY: ["posts"] as const,
+  COMMENTS_KEY: ["comments"] as const,
+  RETRY_COUNT: 3,
+  STALE_TIME: 60 * 1000,
+} as const;
+
+// --- Helper Components ---
+const LoadingSpinner = ({
+  size = 24,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) => <Loader2 size={size} className={`animate-spin ${className}`} />;
+
+// --- Custom Hooks ---
+const useCurrentUserSession = () => {
+  const { data: session, status } = useSession();
+
+  const user = useMemo(() => {
+    if (status === "authenticated" && session?.user) {
+      const userId = (session.user as any).id || (session.user as any).sub;
+      if (userId) {
+        return {
+          id: userId,
+          email: session.user.email ?? "",
+          name: session.user.name || "Anonymous",
+        } as UserSession;
       }
-    } catch (error: any) {
-      toast.error(`Failed to load data. Please refresh the page => ${error}`);
-    } finally {
-      setLoading(false);
     }
+    return null;
+  }, [session, status]);
+
+  return { user, status };
+};
+
+const usePostsAndComments = () => {
+  const fetchPosts = useCallback(async (): Promise<Post[]> => {
+    const res = await axios.get<ApiResponse<Post[]>>("/api/posts/fetchPosts");
+    return res.data.posts || res.data.data || [];
   }, []);
 
-  // Delete post by ID
+  const fetchComments = useCallback(async (): Promise<Comment[]> => {
+    const res = await axios.get<ApiResponse<Comment[]>>(
+      "/api/posts/fetchComments"
+    );
+    return res.data.comments || res.data.data || [];
+  }, []);
 
-  const handleDeletePost = async (postId: string) => {
-    try {
-      const res = await axios.delete(`/api/posts/fetchPosts`, {
-        data: { idPost: postId }, // Pass the post ID in the `data` key for DELETE
-      });
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: QUERY_CONFIG.POSTS_KEY,
+        queryFn: fetchPosts,
+        retry: QUERY_CONFIG.RETRY_COUNT,
+        staleTime: QUERY_CONFIG.STALE_TIME,
+      },
+      {
+        queryKey: QUERY_CONFIG.COMMENTS_KEY,
+        queryFn: fetchComments,
+        retry: QUERY_CONFIG.RETRY_COUNT,
+        staleTime: QUERY_CONFIG.STALE_TIME,
+      },
+    ],
+  });
 
-      if (res.status === 200) {
-        toast.success("Post deleted successfully!");
-        await fetchPostsAndComments(); // Refresh the posts list after deletion
-      } else {
-        toast.error(
-          res.data.message || "Failed to delete the post. Please try again."
-        );
-      }
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message || "An unexpected error occurred.";
-      toast.error(errorMessage);
-    }
+  const [postsQueryResult, commentsQueryResult] = results as [
+    UseQueryResult<Post[]>,
+    UseQueryResult<Comment[]>
+  ];
+
+  return {
+    data:
+      postsQueryResult.isSuccess && commentsQueryResult.isSuccess
+        ? { posts: postsQueryResult.data, comments: commentsQueryResult.data }
+        : undefined,
+    isLoading: postsQueryResult.isPending || commentsQueryResult.isPending,
+    error: postsQueryResult.error || commentsQueryResult.error,
+    refetch: useCallback(() => {
+      postsQueryResult.refetch();
+      commentsQueryResult.refetch();
+    }, [postsQueryResult, commentsQueryResult]),
   };
+};
 
-  // Fetch posts and comments on initial render
+// --- Utility Functions ---
+const sortByDateDesc = <T extends { createdAt: string }>(items: T[]): T[] =>
+  [...items].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
-  useEffect(() => {
-    const resSession = async () => {
-      const session = await getSession();
-      setUser(session?.user || null);
-    };
-    resSession();
-    fetchPostsAndComments();
-  }, [fetchPostsAndComments]);
+const groupCommentsByPostId = (comments: Comment[]) =>
+  comments.reduce((acc, comment) => {
+    if (!acc[comment.postId]) acc[comment.postId] = [];
+    acc[comment.postId].push(comment);
+    return acc;
+  }, {} as Record<string, Comment[]>);
 
-  const formattedPosts = useMemo(
-    () =>
-      posts.map((post) => ({
+// --- Main Component ---
+export default function GetPosts() {
+  const queryClient = useQueryClient();
+  const {
+    data: fetchResult,
+    error: fetchError,
+    isLoading,
+    refetch,
+  } = usePostsAndComments();
+  const { user } = useCurrentUserSession();
+  const [newComment, setNewComment] = useState<Record<string, string>>({});
+
+  const posts: Post[] = fetchResult?.posts || [];
+  const comments: Comment[] = fetchResult?.comments || [];
+
+  // Data Formatting Logic
+  const commentsByPostId = useMemo(
+    () => groupCommentsByPostId(comments),
+    [comments]
+  );
+
+  const formattedPosts = useMemo(() => {
+    return sortByDateDesc(posts).map((post) => {
+      const isLiked = user?.id ? post.likedByUsers?.includes(user.id) : false;
+      const postComments = commentsByPostId[post._id] || [];
+
+      return {
         ...post,
         AuthorName: post.AuthorName || "Anonymous",
         Like: post.Like || 0,
-      })),
-    [posts]
-  );
+        isLikedByUser: isLiked,
+        comments: sortByDateDesc(postComments),
+      } as FormattedPost;
+    });
+  }, [posts, user, commentsByPostId]);
 
-  // Group comments by post ID
-
-  const commentsByPostId = useMemo(() => {
-    return comments.reduce((acc, comment) => {
-      if (!acc[comment.idPost]) {
-        acc[comment.idPost] = [];
+  // --- React Query Mutations ---
+  const likeMutation = useMutation({
+    mutationFn: async ({
+      postId,
+      userId,
+    }: {
+      postId: string;
+      userId: string;
+    }) => {
+      const res = await axios.post<
+        ApiResponse<{ liked: boolean; newLikeCount: number }>
+      >("/api/posts/addLike", { postId, userId });
+      if (!res.data.success) {
+        throw new Error(res.data.message || "Failed to process like.");
       }
-      acc[comment.idPost].push(comment);
-      return acc;
-    }, {} as { [key: string]: Comment[] });
-  }, [comments]);
-
-  // Handle like post
-
-  const handleLike = async (postId: string) => {
-    try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to like a post.");
-        return;
-      }
-
-      setLoading(true);
-      const { data } = await axios.post("/api/posts/addLike", {
-        postId,
-        userEmail: session.user.email,
-      });
-
-      setPosts((prevPosts: any) =>
-        prevPosts.map((post: any) =>
-          post._id === postId
-            ? { ...post, Like: data.liked ? post.Like + 1 : post.Like - 1 }
-            : post
-        )
+      return res.data;
+    },
+    onMutate: async ({ postId, userId }) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_CONFIG.POSTS_KEY });
+      const previousPosts = queryClient.getQueryData<Post[]>(
+        QUERY_CONFIG.POSTS_KEY
       );
 
-      toast.success(data.liked ? "Post liked!" : "Like removed.");
-    } catch (error: any) {
-      toast.error(`Error liking the post Error Message => ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+      queryClient.setQueryData<Post[]>(QUERY_CONFIG.POSTS_KEY, (oldPosts) => {
+        if (!oldPosts) return [];
+        return oldPosts.map((post) => {
+          if (post._id !== postId) return post;
 
-  // Handle add comment
+          const isLiked = post.likedByUsers?.includes(userId);
+          const newLikedByUsers = isLiked
+            ? post.likedByUsers.filter((id) => id !== userId)
+            : [...(post.likedByUsers || []), userId];
 
-  const handleAddComment = async (e: React.FormEvent, postId: string) => {
-    e.preventDefault();
+          return {
+            ...post,
+            Like: post.Like + (isLiked ? -1 : 1),
+            likedByUsers: newLikedByUsers,
+          };
+        });
+      });
+      return { previousPosts };
+    },
+    onError: (err, _, context) => {
+      toast.error(`Failed to process like: ${(err as AxiosError).message}`);
+      if (context?.previousPosts) {
+        queryClient.setQueryData(QUERY_CONFIG.POSTS_KEY, context.previousPosts);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_CONFIG.POSTS_KEY });
+    },
+  });
 
-    try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to comment.");
+  const addCommentMutation = useMutation({
+    mutationFn: async (data: {
+      postId: string;
+      name: string;
+      comment: string;
+      userId: string;
+    }) => {
+      const res = await axios.post<ApiResponse<Comment>>(
+        "/api/posts/addComment",
+        data
+      );
+      if (!res.data.success || !res.data.comment) {
+        throw new Error(res.data.message || "Failed to add comment.");
+      }
+      return res.data.comment;
+    },
+    onSuccess: (_, variables) => {
+      toast.success("Comment added!");
+      setNewComment((prev) => ({ ...prev, [variables.postId]: "" }));
+      queryClient.invalidateQueries({ queryKey: QUERY_CONFIG.COMMENTS_KEY });
+    },
+    onError: (err) => {
+      toast.error(`Failed to post comment: ${(err as AxiosError).message}`);
+    },
+  });
+
+  const deletePostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      const res = await axios.delete<ApiResponse<void>>(
+        `/api/posts/fetchPosts`,
+        {
+          data: { idPost: postId },
+        }
+      );
+      if (!res.data.success) {
+        throw new Error(res.data.message || "API error during post deletion.");
+      }
+    },
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_CONFIG.POSTS_KEY });
+      const previousPosts = queryClient.getQueryData<Post[]>(
+        QUERY_CONFIG.POSTS_KEY
+      );
+      queryClient.setQueryData<Post[]>(QUERY_CONFIG.POSTS_KEY, (oldPosts) =>
+        oldPosts ? oldPosts.filter((post) => post._id !== postId) : []
+      );
+      return { previousPosts };
+    },
+    onSuccess: () => {
+      toast.success("Post deleted successfully");
+    },
+    onError: (err, _, context) => {
+      toast.error(`Failed to delete post: ${(err as AxiosError).message}`);
+      if (context?.previousPosts) {
+        queryClient.setQueryData(QUERY_CONFIG.POSTS_KEY, context.previousPosts);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_CONFIG.POSTS_KEY });
+      queryClient.invalidateQueries({ queryKey: QUERY_CONFIG.COMMENTS_KEY });
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const res = await axios.delete<ApiResponse<void>>(
+        `/api/posts/fetchComments`,
+        {
+          data: { commentId },
+        }
+      );
+      if (!res.data.success) {
+        throw new Error(
+          res.data.message || "API error during comment deletion."
+        );
+      }
+    },
+    onMutate: async (commentId) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_CONFIG.COMMENTS_KEY });
+      const previousComments = queryClient.getQueryData<Comment[]>(
+        QUERY_CONFIG.COMMENTS_KEY
+      );
+      queryClient.setQueryData<Comment[]>(
+        QUERY_CONFIG.COMMENTS_KEY,
+        (oldComments) =>
+          oldComments
+            ? oldComments.filter((comment) => comment._id !== commentId)
+            : []
+      );
+      return { previousComments };
+    },
+    onSuccess: () => {
+      toast.success("Comment deleted");
+    },
+    onError: (err, _, context) => {
+      toast.error(`Failed to delete comment: ${(err as AxiosError).message}`);
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          QUERY_CONFIG.COMMENTS_KEY,
+          context.previousComments
+        );
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_CONFIG.COMMENTS_KEY });
+    },
+  });
+
+  // --- Action Handlers ---
+  const handleLike = useCallback(
+    (postId: string) => {
+      if (!user?.id) {
+        toast.error("Please login to like posts");
+        return;
+      }
+      likeMutation.mutate({ postId, userId: user.id });
+    },
+    [user, likeMutation]
+  );
+
+  const handleAddComment = useCallback(
+    (e: React.FormEvent, postId: string) => {
+      e.preventDefault();
+
+      if (!user?.id) {
+        toast.error("Authentication required. Please log in to comment.");
         return;
       }
 
-      setLoading(true);
-
-      const res = await axios.post("/api/posts/addComment", {
-        postId,
-        comment: newComment[postId],
-        userEmail: session.user.email,
-      });
-
-      if (res.status === 200) {
-        const newCommentData: Comment = {
-          idPost: postId,
-          CommentUserId: session.user.email || "",
-          TextComment: newComment[postId],
-        };
-
-        setComments((prev) => [...prev, newCommentData]);
-        setNewComment((prev) => ({ ...prev, [postId]: "" }));
-        toast.success("Comment added successfully!");
-      } else {
-        toast.error(res.data.message || "Failed to add comment.");
+      const commentText = newComment[postId]?.trim();
+      if (!commentText) {
+        toast.error("Comment cannot be empty.");
+        return;
       }
-    } catch (error: any) {
-      toast.error(`Error adding comment Error : ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      addCommentMutation.mutate({
+        postId,
+        name: user.name || "Anonymous",
+        comment: commentText,
+        userId: user.id,
+      });
+    },
+    [user, newComment, addCommentMutation]
+  );
+
+  const handleDeletePost = useCallback(
+    (postId: string) => {
+      deletePostMutation.mutate(postId);
+    },
+    [deletePostMutation]
+  );
+
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      deleteCommentMutation.mutate(commentId);
+    },
+    [deleteCommentMutation]
+  );
+
+  const isAnyMutationPending =
+    likeMutation.isPending ||
+    addCommentMutation.isPending ||
+    deletePostMutation.isPending ||
+    deleteCommentMutation.isPending;
+
+  const isLoadingState = useCallback(
+    () => isAnyMutationPending,
+    [isAnyMutationPending]
+  );
+
+  // --- Render Logic ---
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-slate-900 dark:to-gray-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center p-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 max-w-md w-full"
+        >
+          <div className="text-7xl mb-6">😞</div>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+            Connection Error
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+            We couldn't load the posts. Please check your connection and try
+            again.
+          </p>
+          <motion.button
+            whileHover={ANIMATION_CONFIG.buttonHover}
+            whileTap={ANIMATION_CONFIG.buttonTap}
+            onClick={() => refetch()}
+            className="px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Try Again
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <>
-      <Toaster />
-      <div className="container h-auto mx-auto p-5 max-w-5xl">
-        <h1 className="text-center text-4xl font-bold text-white mb-5">
-          Posts
-        </h1>
-        {loading ? (
-          <div className="flex justify-center items-center m-5">
-            <p className="text-white text-xl font-semibold">Loading...</p>
-            <div className="spinner ml-4 border-t-4 border-white rounded-full w-8 h-8 animate-spin"></div>
-          </div>
-        ) : formattedPosts.length === 0 ? (
-          <h3 className="text-center text-2xl font-bold text-white">
-            No Found Posts
-          </h3>
-        ) : (
-          <div
-            className="grid grid-row-1
-           sm:grid-row-2 lg:grid-row-3 gap-6 "
+      <Toaster position="top-center" richColors closeButton duration={4000} />
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-950 dark:via-slate-900 dark:to-gray-900">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <motion.header
+            initial={ANIMATION_CONFIG.fadeIn}
+            animate={ANIMATION_CONFIG.fadeInVisible}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
           >
-            {formattedPosts.map((post) => (
-              <div
-                key={post._id}
-                className="p-6 rounded-lg shadow-lg bg-gray-200"
-              >
-                {user && user.id === post.IdUserCreated && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePost(post._id)}
-                    className="bg-red-500 text-white p-2 rounded mb-4 cursor-pointer hover:bg-red-600 transition"
-                  >
-                    Delete
-                  </button>
-                )}
-                <p className="text-black font-bold text-xl mb-2">
-                  <em>
-                    Created By{" "}
-                    <Link
-                      href={`/ProfileUser/${post.IdUserCreated}`}
-                      className="text-red-500 font-bold hover:underline"
-                    >
-                      {post.AuthorName}
-                    </Link>
-                  </em>
+            <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 dark:text-white mb-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent drop-shadow-sm">
+              Community Feed
+            </h1>
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-light">
+              Share your thoughts and engage with the community
+            </p>
+          </motion.header>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center h-72">
+              <div className="text-center">
+                <LoadingSpinner size={40} className="text-indigo-600 mb-6" />
+                <p className="text-lg text-gray-600 dark:text-gray-400 font-medium">
+                  Loading posts...
                 </p>
-                <h3 className="text-3xl font-semibold text-center text-black mb-4">
-                  {post.Title}
-                </h3>
-                {post.PublicImage && (
-                  <CldImage
-                    src={post.PublicImage}
-                    alt="Post Image"
-                    width="450"
-                    height="200"
-                    className="rounded-lg shadow-md w-full mb-4"
-                  />
-                )}
-                <p className="text-black text-2xl font-bold text-center mb-4">
-                  {post.Content}
-                </p>
-                <button
-                  onClick={() => handleLike(post._id)}
-                  className="p-2 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition"
-                >
-                  Like: {post.Like}
-                </button>
-                <form
-                  onSubmit={(e) => handleAddComment(e, post._id)}
-                  className="mt-4"
-                >
-                  <input
-                    type="text"
-                    value={newComment[post._id] || ""}
-                    onChange={(e) =>
-                      setNewComment((prev) => ({
-                        ...prev,
-                        [post._id]: e.target.value,
-                      }))
-                    }
-                    placeholder="Write a comment"
-                    className="w-full border rounded-md px-3 py-2 mb-2"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
-                  >
-                    Submit Comment
-                  </button>
-                </form>
-                <div className="mt-4" id={post._id}>
-                  {commentsByPostId[post._id]?.length ? (
-                    commentsByPostId[post._id].map((comment, idx) => (
-                      <div
-                        key={comment.idPost + idx}
-                        className="bg-gray-700 text-white p-4 rounded-lg mb-2"
-                      >
-                        <Link
-                          href={`/ProfileUser/${
-                            comment.CommentUserId.split("_")[0]
-                          }`}
-                          className="text-blue-400 hover:underline"
-                        >
-                          <div className="flex items-center">
-                            <Image
-                              src={icon}
-                              width={30}
-                              height={30}
-                              alt="User Icon"
-                              className="mr-2 rounded-full"
-                            />
-                          </div>
-                        </Link>
-                        <p>{comment.TextComment}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400">No comments yet.</p>
-                  )}
-                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ) : formattedPosts.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-center py-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50"
+            >
+              <div className="text-7xl mb-6">📝</div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                No posts yet
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-sm mx-auto text-lg">
+                Be the first to share your thoughts with the community
+              </p>
+              <motion.button
+                whileHover={ANIMATION_CONFIG.buttonHover}
+                whileTap={ANIMATION_CONFIG.buttonTap}
+                className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+                onClick={() =>
+                  toast.info(
+                    user
+                      ? "Navigate to create post page"
+                      : "Please login to create a post"
+                  )
+                }
+              >
+                Create First Post
+              </motion.button>
+            </motion.div>
+          ) : (
+            <motion.div
+              className="space-y-8"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                visible: {
+                  transition: {
+                    staggerChildren: 0.08,
+                  },
+                },
+              }}
+            >
+              <AnimatePresence mode="popLayout">
+                {formattedPosts.map((post) => (
+                  <PostItem
+                    key={post._id}
+                    post={post}
+                    user={user}
+                    newComment={newComment}
+                    isLoading={isLoadingState}
+                    setNewComment={setNewComment}
+                    handleLike={handleLike}
+                    handleAddComment={handleAddComment}
+                    handleDeletePost={handleDeletePost}
+                    handleDeleteComment={handleDeleteComment}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </div>
+      </main>
     </>
   );
 }
