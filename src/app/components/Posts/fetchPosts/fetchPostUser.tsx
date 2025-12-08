@@ -1,280 +1,362 @@
-"use clint";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { getSession } from "next-auth/react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { CldImage } from "next-cloudinary";
 import axios from "axios";
 import Image from "next/image";
 import icon from "../../../../../public/iconAccount.png";
+import { motion, AnimatePresence } from "framer-motion";
 
+/* ------------------------------------------------------------------ */
+/* Types                                                              */
+/* ------------------------------------------------------------------ */
 interface Comment {
   idPost: string;
   CommentUserId: string;
   TextComment: string;
 }
-export default function FetchPostUser({ userId }: { userId: string }) {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [newComment, setNewComment] = useState<{ [key: string]: string }>({});
-  const [isOwnAccount, setIsOwnAccount] = useState(false);
 
-  // Comments by post ID
-  const commentsByPostId = useMemo(() => {
-    return comments.reduce((acc, comment) => {
-      if (!acc[comment.idPost]) {
-        acc[comment.idPost] = [];
-      }
-      acc[comment.idPost].push(comment);
-      return acc;
-    }, {} as { [key: string]: Comment[] });
-  }, [comments]);
+interface Post {
+  _id: string;
+  IdUserCreated: string;
+  AuthorName: string;
+  Title: string;
+  Content: string;
+  PublicImage?: string;
+  Like: number;
+}
 
-  const handleLike = async (postId: string) => {
+/* ------------------------------------------------------------------ */
+/* Animation Variants                                                 */
+/* ------------------------------------------------------------------ */
+const postVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: "easeOut" },
+  },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } },
+};
+
+const commentVariants = {
+  hidden: { opacity: 0, height: 0 },
+  visible: { opacity: 1, height: "auto" },
+  exit: { opacity: 0, height: 0 },
+};
+
+/* ------------------------------------------------------------------ */
+/* Sub-Component: Single Post Card                                    */
+/* ------------------------------------------------------------------ */
+const PostCard = ({
+  post,
+  userId,
+  initialComments,
+  onDelete,
+}: {
+  post: Post;
+  userId: string;
+  initialComments: Comment[];
+  onDelete: (id: string) => void;
+}) => {
+  const { data: session } = useSession();
+  const [comments, setComments] = useState<Comment[]>(initialComments);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [likes, setLikes] = useState(post.Like);
+  const [isLiking, setIsLiking] = useState(false);
+  const [isSendingComment, setIsSendingComment] = useState(false);
+
+  const isOwnAccount = session?.user?.id === userId; // Assuming session has ID
+
+  // Optimistic Like Handler
+  const handleLike = async () => {
+    if (!session) return toast.error("Login to like posts");
+    if (isLiking) return;
+
+    // 1. Optimistic Update
+    const previousLikes = likes;
+    setLikes((prev) => prev + 1); // Assume success (add logic for unlike if needed)
+    setIsLiking(true);
+
     try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to like a post.");
-        return;
-      }
-
-      setLoading(true);
-      const { data } = await axios.post("/api/posts/addLike", {
-        postId,
-        userEmail: session.user.email,
+      const { data } = await axios.post("/api/posts/actionPosts/addLike", {
+        postId: post._id,
+        userId: session.user?.id,
       });
 
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId
-            ? { ...post, Like: data.liked ? post.Like + 1 : post.Like - 1 }
-            : post
-        )
-      );
-
-      toast.success(data.liked ? "Post liked!" : "Like removed.");
+      // 2. Sync with server actual response
+      setLikes(data.liked ? previousLikes + 1 : Math.max(0, previousLikes - 1));
+      toast.success(data.liked ? "Liked! ❤️" : "Unliked");
     } catch (error) {
-      toast.error("Error liking the post. Please try again.");
+      // 3. Rollback on error
+      setLikes(previousLikes);
+      toast.error("Failed to like post");
     } finally {
-      setLoading(false);
+      setIsLiking(false);
     }
   };
 
-  // Add a comment to a post
-
-  const handleAddComment = async (e: React.FormEvent, postId: string) => {
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!commentText.trim()) return;
+    if (!session) return toast.error("Login to comment");
 
+    setIsSendingComment(true);
     try {
-      const session = await getSession();
-      if (!session?.user?.email) {
-        toast.error("You must be logged in to comment.");
-        return;
-      }
-
-      setLoading(true);
-
-      const res = await axios.post("/api/posts/addComment", {
-        postId,
-        comment: newComment[postId],
-        userEmail: session.user.email,
+      await axios.post("/api/posts/actionPosts/addComment", {
+        postId: post._id,
+        comment: commentText,
+        userEmail: session.user?.email,
       });
 
-      if (res.status === 200) {
-        setComments((prev) => [
-          ...prev,
-          {
-            idPost: postId,
-            CommentUserId: session.user?.email || "",
-            TextComment: newComment[postId],
-          },
-        ]);
-        setNewComment((prev) => ({ ...prev, [postId]: "" }));
-        toast.success("Comment added successfully!");
-      } else {
-        toast.error(res.data.message || "Failed to add comment.");
-      }
+      setComments((prev) => [
+        ...prev,
+        {
+          idPost: post._id,
+          CommentUserId: session.user?.email || "Anonymous",
+          TextComment: commentText,
+        },
+      ]);
+      setCommentText("");
+      setIsCommentsOpen(true);
+      toast.success("Comment added 💬");
     } catch (error) {
-      toast.error("Error adding comment. Please try again.");
+      toast.error("Failed to post comment");
     } finally {
-      setLoading(false);
+      setIsSendingComment(false);
     }
   };
+
+  return (
+    <motion.article
+      variants={postVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      layout
+      className="group bg-gradient-to-br from-gray-800 to-gray-700 rounded-2xl shadow-xl border border-gray-600/50 hover:border-gray-500/70 overflow-hidden"
+    >
+      {/* --- Post Header --- */}
+      <div className="p-6 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
+                <Image
+                  src={icon}
+                  width={24}
+                  height={24}
+                  alt="User Icon"
+                  className="rounded-full"
+                />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-300">
+                Posted by{" "}
+                <Link
+                  href={`/ProfileUser/${post.IdUserCreated}`}
+                  className="font-semibold text-blue-400 hover:text-blue-300"
+                >
+                  {post.AuthorName}
+                </Link>
+              </p>
+            </div>
+          </div>
+
+          {isOwnAccount && (
+            <button
+              onClick={() => onDelete(post._id)}
+              className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition"
+              title="Delete Post"
+            >
+              🗑️
+            </button>
+          )}
+        </div>
+
+        {/* --- Content --- */}
+        <h2 className="text-2xl font-bold text-white mb-4">{post.Title}</h2>
+
+        {post.PublicImage && (
+          <div className="mb-6 rounded-xl overflow-hidden shadow-lg bg-gray-900">
+            <CldImage
+              src={post.PublicImage}
+              alt={post.Title}
+              width={800}
+              height={400}
+              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+        )}
+
+        <div className="bg-gray-700/50 rounded-xl p-4 border border-gray-600/30 mb-6">
+          <p className="text-gray-200 leading-relaxed">{post.Content}</p>
+        </div>
+
+        {/* --- Actions --- */}
+        <div className="flex gap-4 mb-4">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={handleLike}
+            disabled={isLiking}
+            className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-semibold shadow-lg flex items-center justify-center gap-2"
+          >
+            {isLiking ? (
+              <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+            ) : (
+              "👍"
+            )}
+            <span>{likes}</span>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsCommentsOpen(!isCommentsOpen)}
+            className="flex-1 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-white font-semibold transition flex items-center justify-center gap-2"
+          >
+            💬 <span>{comments.length}</span>
+          </motion.button>
+        </div>
+
+        {/* --- Input --- */}
+        <form onSubmit={handleAddComment} className="relative">
+          <input
+            type="text"
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Write a comment..."
+            className="w-full bg-gray-900/50 border border-gray-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!commentText.trim() || isSendingComment}
+            className="absolute right-2 top-1.5 px-4 py-1.5 bg-blue-600 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:bg-blue-500 transition"
+          >
+            {isSendingComment ? "..." : "Post"}
+          </button>
+        </form>
+
+        {/* --- Comments List --- */}
+        <AnimatePresence>
+          {isCommentsOpen && (
+            <motion.div
+              variants={commentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="mt-4 space-y-3 overflow-hidden"
+            >
+              {comments.length === 0 ? (
+                <p className="text-center text-gray-500 py-2">
+                  No comments yet
+                </p>
+              ) : (
+                comments.map((c, i) => (
+                  <div
+                    key={i}
+                    className="bg-gray-700/30 p-3 rounded-lg border border-white/5"
+                  >
+                    <p className="text-xs text-blue-400 mb-1">
+                      {c.CommentUserId}
+                    </p>
+                    <p className="text-sm text-gray-200">{c.TextComment}</p>
+                  </div>
+                ))
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.article>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Main Component                                                     */
+/* ------------------------------------------------------------------ */
+export default function FetchPostUser({ userId }: { userId: string }) {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [allComments, setAllComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch Data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [postRes, commentRes] = await Promise.all([
+          axios.post("/api/posts/getPostsUser", { IdUser: userId }),
+          axios.get("/api/posts/actionPosts/fetchComments"),
+        ]);
+        setPosts(postRes.data.posts || []);
+        setAllComments(commentRes.data.comments || []);
+      } catch (e) {
+        toast.error("Could not load posts");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (userId) fetchData();
+  }, [userId]);
 
   const handleDeletePost = async (postId: string) => {
+    if (!confirm("Permanently delete this post?")) return;
+
+    // Optimistic Delete from List
+    setPosts((prev) => prev.filter((p) => p._id !== postId));
+
     try {
-      const res = await axios.post("/api/posts/deletePost", { postId });
-      if (res.status === 200) {
-        setPosts((prev) => prev.filter((post) => post._id !== postId));
-        toast.success("Post deleted successfully.");
-      } else {
-        toast.error(res.data.message || "Failed to delete post.");
-      }
-    } catch (error) {
-      toast.error("Error deleting post. Please try again.");
+      await axios.post("/api/posts/actionPosts/deletePost", { postId });
+      toast.success("Deleted");
+    } catch (e) {
+      toast.error("Deletion failed");
+      // Ideally refetch posts here to restore state
     }
   };
 
-  // Fetch posts and comments for the user
-
-  const fetchPostsAndComments = useCallback(async () => {
-    try {
-      const [postRes, commentRes] = await Promise.all([
-        axios.post("/api/posts/getPostsUser", { IdUser: userId }),
-        axios.get("/api/posts/fetchComments"),
-      ]);
-      const session = await getSession();
-      if (session?.user?.email) {
-        setIsOwnAccount(session?.user?.id === userId);
-      }
-      setPosts(postRes.data.posts || []);
-      setComments(commentRes.data.comments || []);
-    } catch (error) {
-      toast.error("Failed to load posts and comments.");
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchPostsAndComments();
-    }
-  }, [userId]);
-
   if (loading) {
-    return <></>;
+    return (
+      <div className="min-h-screen grid place-items-center bg-gray-900">
+        <div className="animate-spin text-4xl">⏳</div>
+      </div>
+    );
   }
 
   return (
-    <>
-      <Toaster position="top-center" />
-      {/* User Posts */}
-      <div className="postsUser w-full">
-        <h1 className="text-center text-3xl font-semibold p-2 m-2">Posts</h1>
-        {posts.length === 0 ? (
-          <p className="text-gray-600 text-center">
-            No posts found for this user.
-          </p>
-        ) : (
-          posts.map((post) => (
-            <div
+    <div className="min-h-screen bg-gray-900 px-4 py-8">
+      <Toaster position="top-center" richColors />
+
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-3xl mx-auto mb-10 text-center"
+      >
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+          User Feed
+        </h1>
+        <p className="text-gray-400 mt-2">{posts.length} Posts</p>
+      </motion.div>
+
+      <div className="max-w-3xl mx-auto space-y-8">
+        <AnimatePresence mode="popLayout">
+          {posts.map((post) => (
+            <PostCard
               key={post._id}
-              className="p-6 bg-gray-800 max-w-5xl rounded-lg shadow-lg"
-            >
-              {isOwnAccount ? (
-                <>
-                  <div>
-                    <button
-                      className="p-1 m-1 bg-red-600 cursor-pointer rounded-md text-white hover:bg-red-700 transition"
-                      onClick={() => handleDeletePost(post._id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span></span>
-                </>
-              )}
-              <p className="text-white text-xl mb-2">
-                <em>
-                  Created By{" "}
-                  <Link
-                    href={`/ProfileUser/${post.IdUserCreated}`}
-                    className="text-red-500 font-bold hover:underline"
-                  >
-                    {post.AuthorName}
-                  </Link>
-                </em>
-              </p>
-              <h3 className="text-3xl font-semibold text-center text-white mb-4">
-                {post.Title}
-              </h3>
-              {post.PublicImage && (
-                <div className="mb-4">
-                  <CldImage
-                    src={post.PublicImage}
-                    alt="Post Image"
-                    width="650"
-                    height="300"
-                    className="rounded-lg shadow-md w-full"
-                    style={{ objectFit: "cover" }}
-                  />
-                </div>
-              )}
-              <p className="text-white text-xl text-center mb-4">
-                {post.Content}
-              </p>
-              <button
-                onClick={() => handleLike(post._id)}
-                className={`p-2 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition ${
-                  loading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                disabled={loading}
-              >
-                Like: {post.Like}
-              </button>
-              <form
-                onSubmit={(e) => handleAddComment(e, post._id)}
-                className="mt-4"
-              >
-                <input
-                  type="text"
-                  value={newComment[post._id] || ""}
-                  onChange={(e) =>
-                    setNewComment((prev) => ({
-                      ...prev,
-                      [post._id]: e.target.value,
-                    }))
-                  }
-                  placeholder="Write a comment"
-                  className="w-full border rounded-md px-3 py-2 mb-2 focus:ring-blue-500 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className={`w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition ${
-                    loading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {loading ? "Adding comment..." : "Add Comment"}
-                </button>
-              </form>
-              <div className="mt-4">
-                <h4 className="text-white font-semibold mb-2">Comments:</h4>
-                {commentsByPostId[post._id]?.length ? (
-                  commentsByPostId[post._id].map((comment, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-gray-700 text-white p-4 rounded-lg mb-2"
-                    >
-                      <Link
-                        href={`/ProfileUser/${
-                          comment.CommentUserId.split("_")[0]
-                        }`}
-                        className="text-blue-400 hover:underline"
-                      >
-                        <div className="flex items-center">
-                          <Image
-                            src={icon}
-                            width={30}
-                            height={30}
-                            alt="User Icon"
-                            className="mr-2 rounded-full"
-                          />
-                        </div>
-                      </Link>
-                      <p>{comment.TextComment}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-400">No comments yet.</p>
-                )}
-              </div>
-            </div>
-          ))
+              post={post}
+              userId={userId}
+              initialComments={allComments.filter((c) => c.idPost === post._id)}
+              onDelete={handleDeletePost}
+            />
+          ))}
+        </AnimatePresence>
+
+        {posts.length === 0 && (
+          <div className="text-center text-gray-500 py-20">No posts found.</div>
         )}
       </div>
-    </>
+    </div>
   );
 }
