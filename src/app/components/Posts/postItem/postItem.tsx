@@ -312,10 +312,10 @@ export const PostItem = memo<PostItemProps>(
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <Link
-                            href={`/ProfileUser/${c.userId ?? c.UserId}`}
+                            href={`/ProfileUser/${c.userId ?? c.userId}`}
                             className="font-semibold text-gray-900 dark:text-white hover:text-indigo-600"
                           >
-                            {c.name ?? c.Name}
+                            {c.Name}
                           </Link>
                           <span className="text-gray-400 text-xs">•</span>
                           <time
@@ -327,10 +327,10 @@ export const PostItem = memo<PostItemProps>(
                           </time>
                         </div>
                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                          {c.textComment ?? c.TextComment}
+                          {c.TextComment ?? c.TextComment}
                         </p>
                       </div>
-                      {(c.userId ?? c.UserId) === user?.id && (
+                      {c._id === user?.id && (
                         <button
                           onClick={() => onDeleteComment(c._id)}
                           disabled={isLoading(`delete-comment-${c._id}`)}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast, Toaster } from "sonner";
 import Link from "next/link";
@@ -28,22 +28,16 @@ interface Post {
 }
 
 /* ------------------------------------------------------------------ */
-/* Animation Variants                                                 */
+/* Animation Variants                                                  */
 /* ------------------------------------------------------------------ */
 const postVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: "easeOut" },
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
   },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } },
-};
-
-const commentVariants = {
-  hidden: { opacity: 0, height: 0 },
-  visible: { opacity: 1, height: "auto" },
-  exit: { opacity: 0, height: 0 },
+  exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } },
 };
 
 /* ------------------------------------------------------------------ */
@@ -51,12 +45,10 @@ const commentVariants = {
 /* ------------------------------------------------------------------ */
 const PostCard = ({
   post,
-  userId,
   initialComments,
   onDelete,
 }: {
   post: Post;
-  userId: string;
   initialComments: Comment[];
   onDelete: (id: string) => void;
 }) => {
@@ -68,30 +60,21 @@ const PostCard = ({
   const [isLiking, setIsLiking] = useState(false);
   const [isSendingComment, setIsSendingComment] = useState(false);
 
-  const isOwnAccount = session?.user?.id === userId; // Assuming session has ID
+  const isPostOwner = session?.user?.id === post._id;
 
-  // Optimistic Like Handler
   const handleLike = async () => {
     if (!session) return toast.error("Login to like posts");
     if (isLiking) return;
-
-    // 1. Optimistic Update
-    const previousLikes = likes;
-    setLikes((prev) => prev + 1); // Assume success (add logic for unlike if needed)
+    setLikes((prev) => prev + 1);
     setIsLiking(true);
-
     try {
       const { data } = await axios.post("/api/posts/actionPosts/addLike", {
         postId: post._id,
         userId: session.user?.id,
       });
-
-      // 2. Sync with server actual response
-      setLikes(data.liked ? previousLikes + 1 : Math.max(0, previousLikes - 1));
-      toast.success(data.liked ? "Liked! ❤️" : "Unliked");
+      if (data.newLikeCount !== undefined) setLikes(data.newLikeCount);
     } catch (error) {
-      // 3. Rollback on error
-      setLikes(previousLikes);
+      setLikes((prev) => prev - 1);
       toast.error("Failed to like post");
     } finally {
       setIsLiking(false);
@@ -100,9 +83,7 @@ const PostCard = ({
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
-    if (!session) return toast.error("Login to comment");
-
+    if (!commentText.trim() || !session) return;
     setIsSendingComment(true);
     try {
       await axios.post("/api/posts/actionPosts/addComment", {
@@ -110,18 +91,15 @@ const PostCard = ({
         comment: commentText,
         userEmail: session.user?.email,
       });
-
-      setComments((prev) => [
-        ...prev,
-        {
-          idPost: post._id,
-          CommentUserId: session.user?.email || "Anonymous",
-          TextComment: commentText,
-        },
-      ]);
+      const newCommentObj = {
+        idPost: post._id,
+        CommentUserId: session.user?.name || session.user?.email || "User",
+        TextComment: commentText,
+      };
+      setComments((prev) => [...prev, newCommentObj]);
       setCommentText("");
       setIsCommentsOpen(true);
-      toast.success("Comment added 💬");
+      toast.success("Comment added");
     } catch (error) {
       toast.error("Failed to post comment");
     } finally {
@@ -133,139 +111,134 @@ const PostCard = ({
     <motion.article
       variants={postVariants}
       initial="hidden"
-      animate="visible"
-      exit="exit"
-      layout
-      className="group bg-gradient-to-br from-gray-800 to-gray-700 rounded-2xl shadow-xl border border-gray-600/50 hover:border-gray-500/70 overflow-hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      className="relative bg-gray-900/40 backdrop-blur-md rounded-3xl border border-gray-800 shadow-2xl overflow-hidden hover:border-gray-700 transition-colors"
     >
-      {/* --- Post Header --- */}
-      <div className="p-6 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
-                <Image
-                  src={icon}
-                  width={24}
-                  height={24}
-                  alt="User Icon"
-                  className="rounded-full"
-                />
-              </div>
+      <div className="p-6 md:p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <div className="p-0.5 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500">
+              <Image
+                src={icon}
+                width={44}
+                height={44}
+                alt="User"
+                className="rounded-full bg-gray-900 border-2 border-gray-900"
+              />
             </div>
             <div>
-              <p className="text-sm text-gray-300">
-                Posted by{" "}
-                <Link
-                  href={`/ProfileUser/${post.IdUserCreated}`}
-                  className="font-semibold text-blue-400 hover:text-blue-300"
-                >
-                  {post.AuthorName}
-                </Link>
-              </p>
+              <Link
+                href={`/ProfileUser/${post.IdUserCreated}`}
+                className="font-bold text-gray-100 hover:text-blue-400 transition-colors block"
+              >
+                {post.AuthorName}
+              </Link>
+              <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
+                Community Contributor
+              </span>
             </div>
           </div>
-
-          {isOwnAccount && (
+          {isPostOwner && (
             <button
               onClick={() => onDelete(post._id)}
-              className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition"
-              title="Delete Post"
+              className="p-2.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
             >
-              🗑️
+              <span className="text-sm font-medium">Delete</span>
             </button>
           )}
         </div>
 
-        {/* --- Content --- */}
-        <h2 className="text-2xl font-bold text-white mb-4">{post.Title}</h2>
+        {/* Content */}
+        <h2 className="text-2xl font-bold text-white mb-4 tracking-tight leading-snug">
+          {post.Title}
+        </h2>
 
         {post.PublicImage && (
-          <div className="mb-6 rounded-xl overflow-hidden shadow-lg bg-gray-900">
+          <div className="mb-6 rounded-2xl overflow-hidden ring-1 ring-gray-800 shadow-inner">
             <CldImage
               src={post.PublicImage}
               alt={post.Title}
               width={800}
               height={400}
-              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
+              crop="fill"
+              gravity="auto"
+              quality={80}
+              sizes="(max-width: 768px) 100vw, 800px"
+              className="w-full h-auto object-cover aspect-video"
             />
           </div>
         )}
 
-        <div className="bg-gray-700/50 rounded-xl p-4 border border-gray-600/30 mb-6">
-          <p className="text-gray-200 leading-relaxed">{post.Content}</p>
-        </div>
+        <p className="text-gray-400 mb-8 leading-relaxed text-lg">
+          {post.Content}
+        </p>
 
-        {/* --- Actions --- */}
-        <div className="flex gap-4 mb-4">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
+        {/* Actions */}
+        <div className="flex items-center gap-3 mb-6">
+          <button
             onClick={handleLike}
             disabled={isLiking}
-            className="flex-1 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-semibold shadow-lg flex items-center justify-center gap-2"
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-bold transition-all ${
+              isLiking
+                ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                : "bg-gray-800/50 border-gray-700 text-gray-300 hover:border-blue-500/50 hover:text-blue-400"
+            }`}
           >
-            {isLiking ? (
-              <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-            ) : (
-              "👍"
-            )}
-            <span>{likes}</span>
-          </motion.button>
-
-          <motion.button
-            whileTap={{ scale: 0.95 }}
+            {isLiking ? "..." : `❤️ ${likes}`}
+          </button>
+          <button
             onClick={() => setIsCommentsOpen(!isCommentsOpen)}
-            className="flex-1 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-white font-semibold transition flex items-center justify-center gap-2"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gray-800/50 border border-gray-700 text-gray-300 text-sm font-bold hover:bg-gray-800 transition-all"
           >
-            💬 <span>{comments.length}</span>
-          </motion.button>
+            💬 {comments.length}
+          </button>
         </div>
 
-        {/* --- Input --- */}
-        <form onSubmit={handleAddComment} className="relative">
+        {/* Comment Form */}
+        <form
+          onSubmit={handleAddComment}
+          className="relative flex items-center gap-2"
+        >
           <input
             type="text"
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Write a comment..."
-            className="w-full bg-gray-900/50 border border-gray-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Share your thoughts..."
+            className="flex-1 bg-gray-950/50 border border-gray-800 rounded-2xl px-5 py-3 text-sm text-white placeholder-gray-600 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
           />
           <button
             type="submit"
             disabled={!commentText.trim() || isSendingComment}
-            className="absolute right-2 top-1.5 px-4 py-1.5 bg-blue-600 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:bg-blue-500 transition"
+            className="p-3 bg-blue-600 hover:bg-blue-500 rounded-2xl text-white disabled:opacity-50 disabled:grayscale transition-all"
           >
-            {isSendingComment ? "..." : "Post"}
+            {isSendingComment ? "..." : "➤"}
           </button>
         </form>
 
-        {/* --- Comments List --- */}
+        {/* Comments List */}
         <AnimatePresence>
           {isCommentsOpen && (
             <motion.div
-              variants={commentVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="mt-4 space-y-3 overflow-hidden"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-6 pt-6 border-t border-gray-800 space-y-4"
             >
-              {comments.length === 0 ? (
-                <p className="text-center text-gray-500 py-2">
-                  No comments yet
-                </p>
-              ) : (
-                comments.map((c, i) => (
-                  <div
-                    key={i}
-                    className="bg-gray-700/30 p-3 rounded-lg border border-white/5"
-                  >
-                    <p className="text-xs text-blue-400 mb-1">
+              {comments.map((c, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gray-800 flex-shrink-0" />
+                  <div className="flex-1 bg-gray-800/30 rounded-2xl px-4 py-3">
+                    <p className="text-xs font-bold text-blue-400 mb-1">
                       {c.CommentUserId}
                     </p>
-                    <p className="text-sm text-gray-200">{c.TextComment}</p>
+                    <p className="text-sm text-gray-300 leading-relaxed">
+                      {c.TextComment}
+                    </p>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
@@ -282,7 +255,6 @@ export default function FetchPostUser({ userId }: { userId: string }) {
   const [allComments, setAllComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -294,7 +266,7 @@ export default function FetchPostUser({ userId }: { userId: string }) {
         setPosts(postRes.data.posts || []);
         setAllComments(commentRes.data.comments || []);
       } catch (e) {
-        toast.error("Could not load posts");
+        toast.error("Network error");
       } finally {
         setLoading(false);
       }
@@ -303,50 +275,60 @@ export default function FetchPostUser({ userId }: { userId: string }) {
   }, [userId]);
 
   const handleDeletePost = async (postId: string) => {
-    if (!confirm("Permanently delete this post?")) return;
-
-    // Optimistic Delete from List
+    if (!confirm("Permanently delete this memory?")) return;
+    const previousPosts = [...posts];
     setPosts((prev) => prev.filter((p) => p._id !== postId));
-
     try {
       await axios.post("/api/posts/actionPosts/deletePost", { postId });
-      toast.success("Deleted");
+      toast.success("Post removed successfully");
     } catch (e) {
-      toast.error("Deletion failed");
-      // Ideally refetch posts here to restore state
+      setPosts(previousPosts);
+      toast.error("Couldn't remove post");
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-gray-900">
-        <div className="animate-spin text-4xl">⏳</div>
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="relative">
+          <div className="w-16 h-16 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-blue-500">
+            LOADING
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 px-4 py-8">
-      <Toaster position="top-center" richColors />
+    <div className="min-h-screen bg-gray-950 text-gray-100 selection:bg-blue-500/30">
+      <Toaster position="top-center" richColors theme="dark" />
 
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-3xl mx-auto mb-10 text-center"
-      >
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-          User Feed
-        </h1>
-        <p className="text-gray-400 mt-2">{posts.length} Posts</p>
-      </motion.div>
+      <header className="max-w-4xl mx-auto pt-24 pb-16 px-6 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h1 className="text-5xl md:text-6xl font-black mb-4 tracking-tighter">
+            USER{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+              FEED
+            </span>
+          </h1>
+          <div className="h-1.5 w-24 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full mb-6" />
+          <p className="text-gray-500 font-medium max-w-sm mx-auto">
+            Explore {posts.length} unique captures from the community.
+          </p>
+        </motion.div>
+      </header>
 
-      <div className="max-w-3xl mx-auto space-y-8">
+      <main className="max-w-3xl mx-auto px-6 pb-24 space-y-12">
         <AnimatePresence mode="popLayout">
           {posts.map((post) => (
             <PostCard
               key={post._id}
               post={post}
-              userId={userId}
               initialComments={allComments.filter((c) => c.idPost === post._id)}
               onDelete={handleDeletePost}
             />
@@ -354,9 +336,18 @@ export default function FetchPostUser({ userId }: { userId: string }) {
         </AnimatePresence>
 
         {posts.length === 0 && (
-          <div className="text-center text-gray-500 py-20">No posts found.</div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-32 border-2 border-dashed border-gray-900 rounded-[3rem]"
+          >
+            <span className="text-4xl mb-4 block">🏜️</span>
+            <p className="text-gray-600 font-bold uppercase tracking-widest text-xs">
+              No posts found
+            </p>
+          </motion.div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

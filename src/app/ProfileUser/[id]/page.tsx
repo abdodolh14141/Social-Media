@@ -154,7 +154,7 @@ export default function ProfileUser() {
   return (
     <>
       <Toaster />
-      <div className="flex flex-col items-center shadow-lg rounded-lg p-20 my-20 max-w-7xl mx-auto">
+      <div className="flex flex-col items-center shadow-lg rounded-lg p-20 my-20 m-5 max-w-7xl mx-auto">
         {loadingProfile ? (
           <div className="flex flex-col items-center justify-center p-10">
             <p className="text-3xl font-semibold text-gray-700">
@@ -173,7 +173,7 @@ export default function ProfileUser() {
             {/* Profile Header */}
             {isOwnAccount && <h4 className="text-3xl p-2">Your Profile</h4>}
             {/* Profile Details */}
-            <div className="text-center mt-4 w-full bg-white rounded-lg p-4">
+            <div className="text-center mt-4 bg-yellow-50 m-5 w-full rounded-lg p-4">
               <Image
                 src={
                   profileData.profileImage && profileData.profileImage !== ""
@@ -206,84 +206,84 @@ export default function ProfileUser() {
                   )}
                 </li>
               </ul>
-            </div>
-            {/* Followers Section */}
-            <div className="mt-4 w-full flex flex-col items-center">
-              <p className="text-xl text-white">
-                Followers:{" "}
-                <motion.span
-                  className="font-bold "
-                  key={profileData.follow}
-                  initial={{ scale: 1.2 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {profileData.follow}
-                </motion.span>
-              </p>
-              {isOwnAccount ? (
-                <div className="w-full max-w-md">
-                  <AnimatePresence>
-                    {profileData.Followers.length > 0 ? (
-                      <motion.div
-                        className="bg-gray-100 rounded-lg p-4 mt-2 w-full"
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="show"
-                      >
-                        <motion.h3
-                          className="text-lg font-semibold text-center mb-2"
+              {/* Followers Section */}
+              <div className="mt-4 m-5 flex flex-col items-center">
+                <p className="text-xl text-white">
+                  Followers:{" "}
+                  <motion.span
+                    className="font-bold "
+                    key={profileData.follow}
+                    initial={{ scale: 1.2 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {profileData.follow}
+                  </motion.span>
+                </p>
+                {isOwnAccount ? (
+                  <div className="w-full max-w-md">
+                    <AnimatePresence>
+                      {profileData.Followers.length > 0 ? (
+                        <motion.div
+                          className="bg-gray-100 rounded-lg p-4 mt-2 w-full"
+                          variants={containerVariants}
+                          initial="hidden"
+                          animate="show"
+                        >
+                          <motion.h3
+                            className="text-lg font-semibold text-center mb-2"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            Your Followers
+                          </motion.h3>
+                          <motion.ul className="space-y-2">
+                            {profileData.Followers.map((follower, index) => (
+                              <motion.li
+                                key={`${follower}-${index}`}
+                                className="bg-white p-3 rounded-md shadow-sm"
+                                variants={itemVariants}
+                                whileHover="hover"
+                              >
+                                <p className="text-gray-700">
+                                  <span className="font-medium">
+                                    {index + 1}.
+                                  </span>{" "}
+                                  {follower.split("@")[0]}
+                                </p>
+                              </motion.li>
+                            ))}
+                          </motion.ul>
+                        </motion.div>
+                      ) : (
+                        <motion.p
+                          className="text-gray-500 text-center py-4"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          transition={{ delay: 0.2 }}
+                          transition={{ duration: 0.5 }}
                         >
-                          Your Followers
-                        </motion.h3>
-                        <motion.ul className="space-y-2">
-                          {profileData.Followers.map((follower, index) => (
-                            <motion.li
-                              key={`${follower}-${index}`}
-                              className="bg-white p-3 rounded-md shadow-sm"
-                              variants={itemVariants}
-                              whileHover="hover"
-                            >
-                              <p className="text-gray-700">
-                                <span className="font-medium">
-                                  {index + 1}.
-                                </span>{" "}
-                                {follower.split("@")[0]}
-                              </p>
-                            </motion.li>
-                          ))}
-                        </motion.ul>
-                      </motion.div>
-                    ) : (
-                      <motion.p
-                        className="text-gray-500 text-center py-4"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        No Followers Yet.
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <motion.button
-                  className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-md shadow-lg transition-all duration-200 disabled:opacity-50"
-                  onClick={handleFollow}
-                  disabled={loading}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {loading
-                    ? "Processing..."
-                    : isFollowing
-                    ? "Unfollow"
-                    : "Follow"}
-                </motion.button>
-              )}
+                          No Followers Yet.
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <motion.button
+                    className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-md shadow-lg transition-all duration-200 disabled:opacity-50"
+                    onClick={handleFollow}
+                    disabled={loading}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {loading
+                      ? "Processing..."
+                      : isFollowing
+                      ? "Unfollow"
+                      : "Follow"}
+                  </motion.button>
+                )}
+              </div>
             </div>
 
             <div className="w-full">

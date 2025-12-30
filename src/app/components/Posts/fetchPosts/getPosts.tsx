@@ -176,7 +176,7 @@ export default function GetPosts() {
       // NOTE: API URL seems incorrect here, should likely be `addComment` not `fetchComments`
       // I'm assuming the server handles this correctly, but correcting the name for clarity:
       const { data } = await axios.post(
-        "/api/posts/actionPosts/addComment", // Corrected URL assumption
+        "/api/posts/actionPosts/fetchComments", // Corrected URL assumption
         d
       );
       if (!data.success || !data.comment) throw new Error("Comment failed");
