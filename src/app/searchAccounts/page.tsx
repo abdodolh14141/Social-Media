@@ -2,8 +2,7 @@
 
 import { getSession } from "next-auth/react";
 import { toast, Toaster } from "sonner";
-import { useState, useEffect, useMemo, useCallback } from "react";
-import axios from "axios";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import debounce from "lodash.debounce";
 
@@ -14,136 +13,129 @@ interface Account {
 }
 
 export default function SearchAccount() {
-  const [name, setName] = useState("");
+  const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
+  // Use a ref for the debounced function to prevent unnecessary re-renders
+  const debouncedSearch = useRef(
     debounce(async (searchTerm: string) => {
       if (!searchTerm.trim()) {
         setSearchResults([]);
+        setHasSearched(false);
         return;
       }
 
       setLoading(true);
-
       try {
-        const { data, status } = await axios.post("/api/users/searchUsers", {
-          name: searchTerm.trim(),
+        const response = await fetch("/api/users/searchUsers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: searchTerm.trim() }),
         });
 
-        if (status === 200 && data.user?.length > 0) {
+        const data = await response.json();
+
+        if (response.ok && data.user) {
           setSearchResults(data.user);
         } else {
           setSearchResults([]);
-          toast.error("No accounts found.");
         }
-      } catch (error: any) {
-        toast.error("An error occurred during the search.");
+      } catch (error) {
+        toast.error("Failed to fetch accounts. Please try again.");
       } finally {
         setLoading(false);
+        setHasSearched(true);
       }
-    }, 400),
-    []
-  );
+    }, 400)
+  ).current;
 
-  // Trigger search manually
-  const handleSearch = async () => {
-    debouncedSearch.cancel(); // Cancel any ongoing debounce to avoid conflicts
-    await debouncedSearch(name);
-  };
-
-  // Handle input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value || ""; // Ensure value is a string
-    setName(value);
-    void debouncedSearch(value);
-  };
-
-  // Fetch session on component mount
   useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        const session = await getSession();
-        if (session?.user?.name) setName(session.user.name);
-      } catch {
-        toast.error("An error occurred while fetching session data.");
-      }
-    };
-
-    fetchSession();
-
-    // Cleanup debounce on unmount
-    return () => {
-      debouncedSearch.cancel();
-    };
+    return () => debouncedSearch.cancel();
   }, [debouncedSearch]);
 
-  // Render search results
-  const mappedAccounts = useMemo(
-    () =>
-      searchResults.map((account) => (
-        <Link href={`/ProfileUser/${account._id}`} key={account._id} passHref>
-          <li className="p-4 border rounded-md cursor-pointer hover:bg-blue-50 transition-all duration-300">
-            <p className="flex items-center font-bold text-lg text-gray-800">
-              <img
-                src="https://img.icons8.com/color/48/test-account.png"
-                alt="User Icon"
-                className="mr-3"
-              />
-              {account.Name}
-            </p>
-          </li>
-        </Link>
-      )),
-    [searchResults]
-  );
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    debouncedSearch(value);
+  };
 
   return (
-    <>
-      <div className="max-w-6xl mx-auto p-4 bg-white rounded-xl shadow-lg">
-        <Toaster />
-        <form
-          onSubmit={(e) => e.preventDefault()}
-          className="text-center w-full"
-        >
-          <h2 className="mb-4 text-2xl text-gray-600">Search for a Accounts</h2>
-          <div className="flex flex-col items-center">
-            <input
-              type="text"
-              placeholder="Enter username"
-              onChange={handleInputChange}
-              className="border rounded-md p-2 mb-4 w-full max-w-7xl text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="button"
-              onClick={handleSearch}
-              className="bg-blue-500 text-white py-2 px-4 rounded-md w-full max-w-7xl hover:bg-blue-600 transition duration-200 flex items-center justify-center"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="loader border-t-transparent" />
-              ) : (
-                "Search"
-              )}
-            </button>
-          </div>
-        </form>
+    <div className="max-w-4xl mx-auto p-6">
+      <Toaster position="top-center" />
 
-        {loading && (
-          <p className="text-blue-500 mt-2 text-center">Searching...</p>
-        )}
+      <div className="bg-white rounded-2xl shadow-sm border p-8">
+        <header className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900">Find Accounts</h2>
+          <p className="text-gray-500 mt-2">
+            Search for users by name or email
+          </p>
+        </header>
 
-        {searchResults.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-2xl font-semibold text-center mb-4 text-gray-700">
-              Select an Account
-            </h3>
-            <ul className="space-y-4">{mappedAccounts}</ul>
-          </div>
-        )}
-      </div>{" "}
-    </>
+        <div className="relative max-w-2xl mx-auto">
+          <input
+            type="text"
+            value={query}
+            placeholder="Search by name..."
+            onChange={handleInputChange}
+            className="w-full pl-4 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-lg"
+          />
+          {loading && (
+            <div className="absolute right-4 top-3.5">
+              <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-10">
+          {searchResults.length > 0 ? (
+            <div className="grid gap-4">
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                Results
+              </h3>
+              {searchResults.map((account) => (
+                <Link
+                  href={`/ProfileUser/${account._id}`}
+                  key={account._id}
+                  className="group flex items-center p-4 rounded-xl border border-transparent bg-gray-50 hover:bg-blue-50 hover:border-blue-100 transition-all"
+                >
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl mr-4 group-hover:scale-110 transition-transform">
+                    {account.Name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">
+                      {account.Name}
+                    </h4>
+                    <p className="text-sm text-gray-500">{account.Email}</p>
+                  </div>
+                  <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg
+                      className="w-5 h-5 text-blue-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : hasSearched && !loading ? (
+            <div className="text-center py-10">
+              <p className="text-gray-400 text-lg">
+                No accounts found for "{query}"
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
