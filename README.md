@@ -66,12 +66,12 @@ Add screenshots or a demo link here:
 This repository is primarily TypeScript. Typical stack choices (adjust as needed):
 
 - Language: TypeScript (frontend & backend)
-- Frontend: React / Next.js / Vite (adjust)
-- Backend: Node.js + Express / NestJS (adjust)
-- Database: MongoDB / PostgreSQL / MySQL (adjust)
-- ORM/ODM: Mongoose / Prisma / TypeORM (adjust)
+- Frontend: Next.js
+- Backend: Node.js + Express
+- Database: MongoDB
+- ORM/ODM: Mongoose
 - Authentication: JWT / OAuth (adjust)
-- Storage: Local file system / AWS S3 / Cloud Storage
+- Storage: Local file system / Cloud Storage CloudFlair
 - Real-time: Socket.IO / WebSockets
 - Testing: Jest / Playwright / Cypress
 - Linting & formatting: ESLint, Prettier
