@@ -1,6 +1,6 @@
 import Contact from "@/app/contact/page";
 
-export default function About() {
+export default function () {
   return (
     <div className="max-w-7xl mx-auto p-8 space-y-6 text-white m-3 rounded-lg">
       <h1 className="text-4xl font-extrabold text-center text-white mb-4 animate-fade-in-down">

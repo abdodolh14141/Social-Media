@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import NewPostForm from "../newPost/newPage";
 import PostFeed from "../fetchPosts/getPosts";
 import AccountSearch from "../../../searchAccounts/page";
-import AboutSection from "../../../about/page";
+import About from "../../../about/page";
 
 // Define the paths for better maintainability (optional)
 const LOGIN_PATH = "/api/auth/signin";
@@ -78,7 +78,7 @@ export default function HeroForm() {
 
         <div className="mt-20">
           {/* Replaced About with a clearer name AboutSection */}
-          <AboutSection />
+          <About />
         </div>
       </main>
     </>
