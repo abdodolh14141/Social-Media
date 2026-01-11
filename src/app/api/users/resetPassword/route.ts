@@ -7,7 +7,10 @@ import crypto from "crypto";
 
 export const runtime = "nodejs";
 
-export async function POST(req: NextRequest, res: NextResponse) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<any> }
+) {
   try {
     const { email, token, password } = await req.json();
 

@@ -1,40 +1,24 @@
-import nextJest from 'next/jest.js';
+import type { Config } from "jest";
+import nextJest from "next/jest";
 
 const createJestConfig = nextJest({
-  dir: './',
+  dir: "./",
 });
 
-const customJestConfig = {
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+const customJestConfig: Config = {
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+  testEnvironment: "jest-environment-jsdom",
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+    "^@/(.*)$": "<rootDir>/src/$1",
   },
-  testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   transform: {
-    '^.+\\.(ts|tsx)
-  globals: {
-    'ts-jest': {
-      tsconfig: '<rootDir>/tsconfig.json',
-    },
+    // We use "as const" here to tell TypeScript this is exactly 2 elements
+    "^.+\\.(ts|tsx)$": [
+      "ts-jest",
+      { tsconfig: "<rootDir>/tsconfig.json" },
+    ] as const,
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(lodash-es)/)'
-  ],
-};
-
-export default createJestConfig(customJestConfig);
-: 'ts-jest',
-  },
-  globals: {
-    'ts-jest': {
-      tsconfig: '<rootDir>/tsconfig.json',
-    },
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(lodash-es)/)'
-  ],
+  testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
 };
 
 export default createJestConfig(customJestConfig);

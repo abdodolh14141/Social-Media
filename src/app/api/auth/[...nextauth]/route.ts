@@ -5,4 +5,5 @@ import { validateAuthEnvironment } from "../../../libs/auth/validateEnv";
 validateAuthEnvironment();
 
 const handler = NextAuth(AuthOptions);
-export { handler as GET, handler as POST, AuthOptions };
+
+export { handler as GET, handler as POST };

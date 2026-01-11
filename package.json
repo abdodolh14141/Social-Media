@@ -20,6 +20,7 @@
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "crypto": "^1.0.1",
+    "eslint-plugin-jest-dom": "^5.5.0",
     "firebase": "^11.8.1",
     "framer-motion": "^12.16.0",
     "jsonwebtoken": "^9.0.2",
