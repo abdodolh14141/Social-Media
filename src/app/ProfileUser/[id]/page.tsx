@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import icon from "../../../../public/iconAccount.png";
-import FetchPostUser from "@/app/components/Posts/fetchPosts/fetchPostUser";
+import FetchPostUser from "@/app/components/Posts/fetchPostsUser/fetchPostUser";
 
 interface ProfileData {
   id: string;

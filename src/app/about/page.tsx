@@ -23,7 +23,9 @@ export default function () {
         discover new ideas, our goal is to be your go-to platform for social
         connection.
       </p>
-      <p className="font-bold text-black">Created By: Abdo Adel Soliman</p>
+      <p className="font-bold text-black">
+        Created By: Abdulrahman Adel Soliman
+      </p>
       <h2 className="text-2xl font-semibold text-white animate-fade-in-left">
         Features
       </h2>

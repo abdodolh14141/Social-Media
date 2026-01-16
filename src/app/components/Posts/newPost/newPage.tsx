@@ -1,9 +1,14 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
 import { CldUploadWidget } from "next-cloudinary";
 import { useRouter } from "next/navigation";
+import LoginWithGoogle from "@/app/components/buttons/LoginWithGoogle";
+import { motion, AnimatePresence } from "framer-motion";
+import { ImagePlus, Send, Loader2, X, Sparkles } from "lucide-react";
 
 interface NewPost {
   title: string;
@@ -24,281 +29,195 @@ export default function NewPost() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  // Fix: Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Handle input changes
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { id, value } = e.target;
-    setNewPostForm((prevForm) => ({ ...prevForm, [id]: value }));
+    const { name, value } = e.target;
+    setNewPostForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Validate form inputs
-  const validateForm = (): boolean => {
-    const { title, content, ImageId } = newPostForm;
-
-    if (!title.trim()) {
-      toast.error("Please enter a title.");
-      return false;
-    }
-    if (!content.trim()) {
-      toast.error("Please enter the content.");
-      return false;
-    }
-    if (!ImageId) {
-      toast.error("Please upload an image.");
-      return false;
-    }
-    return true;
-  };
-
-  // Handle form submission
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!session?.user?.email) return toast.error("Please log in first.");
 
-    // Fix: Check authentication before submission
-    if (status === "unauthenticated" || !session?.user?.email) {
-      toast.error("You must be logged in to create a post.");
+    if (
+      !newPostForm.title.trim() ||
+      !newPostForm.content.trim() ||
+      !newPostForm.ImageId
+    ) {
+      toast.error("Complete all fields and add an image.");
       return;
     }
 
     try {
       setLoading(true);
-
-      // Submit post data
-      const response = await axios.post("/api/posts/addNewPost", {
-        title: newPostForm.title.trim(),
-        content: newPostForm.content.trim(),
-        ImageId: newPostForm.ImageId,
+      const response = await axios.post("/api/posts/actionPosts/addNewPost", {
+        ...newPostForm,
         authorEmail: session.user.email,
       });
 
-      if (response.status === 201 || response.data.success) {
-        toast.success("Post created successfully!");
-        setNewPostForm({ title: "", content: "", ImageId: "", imageUrl: "" });
+      if (response.data.success || response.status === 201) {
+        toast.success("Post is now live!");
         router.push("/");
-      } else {
-        toast.error(response.data.message || "Failed to create the post.");
       }
     } catch (error: any) {
-      console.error("Error creating post:", error);
-      toast.error(
-        error.response?.data?.message || "An unexpected error occurred."
-      );
+      toast.error(error.response?.data?.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle image upload
-  const handleUploadSuccess = (result: any) => {
-    if (result?.event === "success") {
-      const { public_id, secure_url } = result.info;
-      setNewPostForm((prevForm) => ({
-        ...prevForm,
-        ImageId: public_id,
-        imageUrl: secure_url,
-      }));
-      toast.success("Image uploaded successfully!");
-    }
-  };
+  if (status === "loading" || !isMounted) return null;
 
-  const handleUploadError = () => {
-    toast.error("Image upload failed. Please try again.");
-  };
-
-  const handleRemoveImage = () => {
-    setNewPostForm((prev) => ({
-      ...prev,
-      ImageId: "",
-      imageUrl: "",
-    }));
-    toast.info("Image removed");
-  };
-
-  // Show loading state while checking authentication
-  if (status === "loading" || !isMounted) {
-    return (
-      <div className="container mx-auto max-w-4xl p-5">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show message if not authenticated
   if (status === "unauthenticated") {
     return (
-      <div className="container mx-auto max-w-4xl p-5">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-yellow-800 mb-2">
-            Authentication Required
+      <div className="flex items-center justify-center min-h-[70vh] px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full p-8 text-center bg-white border border-gray-100 shadow-2xl rounded-3xl"
+        >
+          <div className="bg-blue-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-600">
+            <Sparkles size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Join the Community
           </h2>
-          <p className="text-yellow-700">
-            You need to be logged in to create a post.
+          <p className="text-gray-500 mb-8">
+            Sign in to share your thoughts and stories with the world.
           </p>
-        </div>
+          <LoginWithGoogle />
+        </motion.div>
       </div>
     );
   }
 
-  const isFormValid =
-    newPostForm.title.trim() &&
-    newPostForm.content.trim() &&
-    newPostForm.ImageId;
-
   return (
-    <div className="container mx-auto sm:p-5 md:p-10 lg:p-20 min-h-screen">
-      <Toaster richColors position="top-right" />
+    <div className="max-w-7xl mx-auto p-5 m-2 bg-white rounded-lg">
+      <Toaster richColors position="top-center" />
 
-      <form
-        onSubmit={handlePostSubmit}
-        className="bg-white shadow-lg rounded-xl p-4 mx-auto border border-gray-100"
-        aria-label="Create a New Post"
-      >
-        <h1 className="text-3xl text-center font-bold text-gray-900 mb-8">
-          Create a New Post
-        </h1>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <header className="m-2 text-center">
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+            New Story
+          </h1>
+          <p className="text-gray-500 mt-2">
+            Drafting as {session?.user?.name}
+          </p>
+        </header>
 
-        {/* Post Title */}
-        <div className="mb-6">
-          <label
-            htmlFor="title"
-            className="block text-lg font-semibold text-gray-800 mb-2"
-          >
-            Title *
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={newPostForm.title}
-            onChange={handleChange}
-            placeholder="Enter your post title"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            maxLength={100}
-          />
-          <div className="text-right text-sm text-gray-500 mt-1">
-            {newPostForm.title.length}/100
-          </div>
-        </div>
-
-        {/* Post Content */}
-        <div className="mb-6">
-          <label
-            htmlFor="content"
-            className="block text-lg font-semibold text-gray-800 mb-2"
-          >
-            Content *
-          </label>
-          <textarea
-            id="content"
-            value={newPostForm.content}
-            onChange={handleChange}
-            placeholder="Write your post content here..."
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-vertical"
-            rows={6}
-            maxLength={1000}
-          ></textarea>
-          <div className="text-right text-sm text-gray-500 mt-1">
-            {newPostForm.content.length}/1000
-          </div>
-        </div>
-
-        {/* Image Upload */}
-        <div className="mb-8">
-          <label className="block text-lg font-semibold text-gray-800 mb-2">
-            Upload Image *
-          </label>
-          <div className="space-y-4">
+        <form onSubmit={handlePostSubmit} className="space-y-8">
+          {/* Cover Image Upload Area */}
+          <div className="relative group">
             <CldUploadWidget
               uploadPreset="hg1ghiyh"
               onSuccess={handleUploadSuccess}
-              onError={handleUploadError}
             >
               {({ open }) => (
                 <button
                   type="button"
                   onClick={() => open()}
-                  className="px-6 py-3 text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-md"
+                  className={`w-full overflow-hidden rounded-3xl transition-all duration-300 border-2 border-dashed ${
+                    newPostForm.imageUrl
+                      ? "border-transparent"
+                      : "border-gray-200 bg-gray-50 h-64 hover:bg-gray-100 hover:border-blue-400"
+                  }`}
                 >
-                  Upload Image
+                  {newPostForm.imageUrl ? (
+                    <div className="relative group">
+                      <img
+                        src={newPostForm.imageUrl}
+                        className="w-full h-[400px] object-cover rounded-3xl"
+                        alt="Cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                        <p className="text-white font-bold flex items-center gap-2">
+                          <ImagePlus size={20} /> Change Cover Image
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                      <ImagePlus size={40} strokeWidth={1.5} />
+                      <span className="font-semibold text-lg">
+                        Add a cover photo
+                      </span>
+                    </div>
+                  )}
                 </button>
               )}
             </CldUploadWidget>
-
-            {newPostForm.imageUrl && (
-              <div className="mt-4 p-4 border border-green-200 rounded-lg bg-green-50">
-                <p className="text-green-700 font-medium mb-3">
-                  Image uploaded successfully!
-                </p>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <img
-                    src={newPostForm.imageUrl}
-                    alt="Uploaded preview"
-                    className="max-w-xs rounded-lg shadow-sm border border-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
-                  >
-                    Remove Image
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={loading || !isFormValid}
-          className={`w-full py-3 px-4 rounded-lg text-white font-semibold text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ${
-            loading || !isFormValid
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:ring-green-500 shadow-lg"
-          }`}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center">
-              <svg
-                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Creating Post...
-            </span>
-          ) : (
-            "Publish Post"
-          )}
-        </button>
+          <div className="space-y-6">
+            {/* Title Input */}
+            <input
+              name="title"
+              value={newPostForm.title}
+              onChange={handleChange}
+              placeholder="Give your story a title..."
+              className="w-full bg-transparent text-4xl md:text-5xl font-extrabold text-gray-900 placeholder:text-gray-200 outline-none border-none"
+              maxLength={100}
+              required
+            />
 
-        <div className="mt-4 text-center text-sm text-gray-500">
-          <p>Fields marked with * are required</p>
-        </div>
-      </form>
+            {/* Content Textarea */}
+            <div className="relative">
+              <textarea
+                name="content"
+                value={newPostForm.content}
+                onChange={handleChange}
+                placeholder="What's on your mind?"
+                className="w-full bg-transparent text-xl text-gray-700 placeholder:text-gray-300 outline-none min-h-[300px] resize-none leading-relaxed"
+                maxLength={1000}
+                required
+              />
+
+              {/* Progress Indicator */}
+              <div className="flex justify-end gap-4 text-xs font-medium text-gray-400 mt-4 border-t pt-4">
+                <span>{newPostForm.title.length}/100 Title</span>
+                <span>{newPostForm.content.length}/1000 Content</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex items-center justify-between pt-6">
+            <button
+              type="submit"
+              disabled={loading}
+              className="group flex items-center gap-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl shadow-blue-200 active:scale-95"
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" size={24} />
+              ) : (
+                <>
+                  Publish Story
+                  <Send
+                    size={20}
+                    className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
+                  />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
+
+  function handleUploadSuccess(result: any) {
+    if (result?.event === "success") {
+      setNewPostForm((prev) => ({
+        ...prev,
+        ImageId: result.info.public_id,
+        imageUrl: result.info.secure_url,
+      }));
+      toast.success("Image ready!");
+    }
+  }
 }

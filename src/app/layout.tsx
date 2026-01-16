@@ -1,5 +1,5 @@
 import Header from "./components/nav/Header";
-import LastNav from "./components/lastNav/headerLast";
+import Footer from "./components/lastNav/headerLast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Metadata } from "next";
 import "./globals.css";
@@ -29,12 +29,12 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <main>
-          <div className="h-lvh mx-auto p-2">
+          <div className="h-lvh mx-auto p-2 ">
             <GoogleOAuthProvider clientId={googleClientId}>
               <Providers>
                 <Header />
                 {children}
-                <LastNav />
+                <Footer />
               </Providers>
             </GoogleOAuthProvider>
           </div>

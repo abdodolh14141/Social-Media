@@ -286,8 +286,8 @@ export default function ResetPass() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="max-w-md w-full shadow-2xl bg-white rounded-2xl text-gray-800 overflow-hidden transition duration-300 hover:shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br  px-4">
+      <div className="max-w-5xl w-full shadow-2xl bg-white rounded-2xl text-gray-800 overflow-hidden transition duration-300 hover:shadow-xl">
         <div className="py-6 px-8 bg-gradient-to-r from-blue-600 to-indigo-700 text-center">
           <h2 className="text-3xl font-bold text-white">
             <i className="fas fa-lock mr-2"></i>Reset Password

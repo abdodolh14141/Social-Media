@@ -7,7 +7,7 @@ import { callbacks as rawCallbacks } from "./callbacks"; // Rename to avoid conf
 
 // --- Define Missing Constant ---
 // Define the session maximum age in seconds for consistency
-const SESSION_MAX_AGE_SECONDS = 4 * 60 * 60; // 4 hours
+const SESSION_MAX_AGE_SECONDS = 2 * 60 * 60; // 4 hours
 
 // --- Type Casting for Callbacks ---
 // Ensure the callbacks object is correctly typed as CallbacksOptions

@@ -3,102 +3,113 @@
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Logout from "../buttons/logoutButton";
-import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
-import { toast, Toaster } from "sonner";
+import { usePathname } from "next/navigation";
+import { User, Home, Info, PlusCircle, LogIn } from "lucide-react";
 
 export default function Header() {
-  const { data: session, status } = useSession(); // Session data
-  const [userId, setUserId] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { data: session, status } = useSession();
+  const pathname = usePathname();
 
-  // Fetch the user ID based on the session
-  const fetchUserId = useCallback(async () => {
-    if (!session?.user?.name) return;
-    setLoading(true);
-    try {
-      const res = await axios.post("/api/users/searchUsers", {
-        name: session.user.name,
-      });
-      if (res.data.success) {
-        setUserId(res.data.user[0]._id);
-      }
-    } catch (error) {
-      console.error("Error fetching user ID:", error);
-      toast.error("Failed to fetch user ID. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user?.name]);
+  const isLoading = status === "loading";
 
-  useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      fetchUserId();
-    }
-  }, [status, session, fetchUserId]);
+  // Navigation Link Component for reuse
+  const NavLink = ({ href, children, icon: Icon }: any) => {
+    const isActive = pathname === href;
+    return (
+      <Link
+        href={href}
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+          isActive
+            ? "bg-blue-500/10 text-blue-500"
+            : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+        }`}
+      >
+        <Icon size={18} />
+        <span className="hidden md:inline">{children}</span>
+      </Link>
+    );
+  };
 
   return (
-    <>
-      <Toaster />
-      <header className="flex items-center justify-between bg-gray-800 text-white rounded-md p-2 sticky top-0 z-10 shadow-md">
-        {/* Logo and Navigation Links */}
-        <div className="flex items-center gap-6">
+    <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Left: Logo & Core Nav */}
+        <div className="flex items-center gap-8">
           <Link
             href="/"
-            className="text-2xl font-semibold hover:scale-105 transition-transform"
+            className="flex items-center gap-2 transition-transform hover:scale-105"
           >
-            Social Media
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
+              <span className="text-xl font-black">S</span>
+            </div>
+            <span className="hidden text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:block">
+              SocialSpace
+            </span>
           </Link>
-          <nav className="flex items-center gap-4 text-lg">
-            <Link
-              href="/about"
-              className="hover:text-blue-400 transition-colors"
-            >
+
+          <nav className="flex items-center gap-1">
+            <NavLink href="/" icon={Home}>
+              Feed
+            </NavLink>
+            <NavLink href="/about" icon={Info}>
               About
-            </Link>
+            </NavLink>
           </nav>
         </div>
 
-        {/* Website Icon */}
-        <img
-          src="https://cdn-icons-png.flaticon.com/512/2065/2065157.png"
-          alt="Website Icon"
-          className="w-10 h-10"
-          loading="lazy"
-        />
-
-        {/* User Actions */}
-        <nav className="flex items-center gap-4">
-          {loading ? (
-            <span className="text-gray-300">Loading...</span>
+        {/* Right: User Actions */}
+        <div className="flex items-center gap-4">
+          {isLoading ? (
+            <div className="h-8 w-24 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
           ) : session?.user ? (
-            <>
+            <div className="flex items-center gap-3">
               <Link
-                href={`/ProfileUser/${userId}`}
-                className="text-lg font-bold bg-blue-500 px-3 py-1 rounded-lg hover:scale-105 transition-transform"
+                href="/newPost"
+                className="hidden items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-800 dark:bg-white dark:text-black md:flex"
               >
-                My Account
+                <PlusCircle size={16} />
+                New Post
               </Link>
+
+              <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800" />
+
+              <Link
+                href={`/ProfileUser/${session.user?.id || ""}`}
+                className="group flex items-center gap-2"
+              >
+                {session.user.image ? (
+                  <img
+                    src={session.user.image}
+                    className="h-9 w-9 rounded-full border-2 border-transparent transition-all group-hover:border-blue-500"
+                    alt="User"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <User size={20} className="text-zinc-500" />
+                  </div>
+                )}
+              </Link>
+
               <Logout />
-            </>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="hover:text-blue-400 transition-colors"
+                className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-blue-600 transition-colors"
               >
                 Sign In
               </Link>
               <Link
                 href="/signin"
-                className="bg-blue-500 px-3 py-1 rounded-lg text-white hover:scale-105 transition-transform"
+                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 active:scale-95"
               >
-                Create Account
+                Join Now
               </Link>
-            </>
+            </div>
           )}
-        </nav>
-      </header>
-    </>
+        </div>
+      </div>
+    </header>
   );
 }

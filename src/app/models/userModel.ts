@@ -36,12 +36,9 @@ const userSchema = new mongoose.Schema({
     minlength: [6, "User Password must be at least 3 characters long"],
     required: false,
   },
-  resetPasswordToken: {
-    type: String,
-  },
-  resetPasswordExpires: {
-    type: Date,
-  },
+  resetPasswordCode: String,
+  resetPasswordExpires: Date,
+  resetPasswordAttempts: { type: Number, default: 0 },
   createdAt: {
     type: Date,
     default: Date.now,

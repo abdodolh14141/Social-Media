@@ -57,7 +57,7 @@ export const callbacks = {
   async session({ session, token }: { session: Session; token: JWT }) {
     if (token) {
       session.user = {
-        id: token.id,
+        id: token.sub,
         email: token.email,
         name: token.name,
       };
