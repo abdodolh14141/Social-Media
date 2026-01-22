@@ -1,4 +1,4 @@
-# Social Web - Modern Social Media Platform
+**# Social Web - Modern Social Media Platform
 
 A full-stack social media application built with modern technologies, featuring real-time messaging, post interactions, and a responsive UI.
 
@@ -122,3 +122,4 @@ If you prefer running them separately:
 ## 📄 License
 
 This project is open-source.
+**
