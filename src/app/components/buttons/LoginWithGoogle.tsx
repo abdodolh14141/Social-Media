@@ -17,8 +17,8 @@ export default function LoginWithGoogle() {
         toast.success("Successfully logged in with Google!");
         router.push("/");
       }
-    } catch (error) {
-      toast.error("Failed to login with Google. Please try again.");
+    } catch (error: any) {
+      toast.error("Failed to login with Google. Please try again.", error);
     }
   };
 

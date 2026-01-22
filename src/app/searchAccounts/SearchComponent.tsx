@@ -107,7 +107,7 @@ export default function SearchAccount() {
             value={query}
             placeholder="Search accounts..."
             onChange={handleInputChange}
-            className="w-full pl-12 pr-12 py-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl focus:ring-2 focus:ring-blue-500 shadow-lg outline-none transition-all"
+            className="w-full pl-12 text-white pr-12 py-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl focus:ring-2 focus:ring-blue-500 shadow-lg outline-none transition-all"
           />
 
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 group-focus-within:text-blue-500 transition-colors" />

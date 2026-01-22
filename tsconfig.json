@@ -5,39 +5,31 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
-    "skipDefaultLibCheck": true,
     "noEmit": true,
-    "types": ["node"],
     "esModuleInterop": true,
-    "module": "commonjs",
-    // "moduleResolution": "bundler",
+    // CHANGE 1: Use "preserve" or "esnext" for modern bundlers
+    "module": "esnext", 
+    // CHANGE 2: Use "bundler" (recommended) or "node16" for better module finding
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "baseUrl": "./src",
-    "ignoreDeprecations": "6.0",
     "plugins": [
       {
         "name": "next"
       }
     ],
+    "baseUrl": ".", // Change to "." to align with the root
     "paths": {
-      "@/*": ["../src/*"]
-    },
-    "moduleResolution": "node"
+      "@/*": ["./src/*"] // Fix path mapping
+    }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    "src/app/_app.jsx",
-    "src/context/Provider.tsx",
-    "src/app/components/Posts/HeroHome/HeroForm.jsx",
-    "src/app/components/Posts/page.test.jsx",
-    "jest.config.ts",
-    "jest.config.cts"
+    ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

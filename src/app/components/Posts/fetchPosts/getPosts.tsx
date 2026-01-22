@@ -62,10 +62,49 @@ export default function GetPosts() {
     ],
   });
 
+  /* Mutations */
   const likeMutation = useMutation({
     mutationFn: (postId: string) =>
-      axios.post("/api/posts/actionPosts/like", { postId }),
+      axios.post("/api/posts/actionPosts/addLike", { postId, userId: user?.id }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: (data: any) =>
+      axios.post("/api/posts/actionPosts/fetchComments", data),
+    onSuccess: () => {
+      toast.success("Comment added");
+      queryClient.invalidateQueries({ queryKey: ["comments"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to add comment");
+    },
+  });
+
+  const deletePostMutation = useMutation({
+    mutationFn: (postId: string) =>
+      axios.post("/api/posts/actionPosts/deletePost", { postId }),
+    onSuccess: () => {
+      toast.success("Post deleted");
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to delete post");
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: string) =>
+      axios.delete("/api/posts/actionPosts/fetchComments", {
+        data: { commentId },
+      }),
+    onSuccess: () => {
+      toast.success("Comment deleted");
+      queryClient.invalidateQueries({ queryKey: ["comments"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to delete comment");
+    },
   });
 
   const formattedPosts = useMemo(() => {
@@ -83,7 +122,7 @@ export default function GetPosts() {
       )
       .map((p) => ({
         ...p,
-        isLikedByUser: user?.id ? p.likedByUsers?.includes(user.id) : false,
+        isLikedByUser: user?.id ? p.likedBy?.includes(user.id) : false,
         comments: (commentMap.get(p._id) || []).sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -91,6 +130,7 @@ export default function GetPosts() {
       }));
   }, [postsQuery.data, commentsQuery.data, user?.id]);
 
+  /* Handlers */
   const handleLike = useCallback(
     (postId: string) => {
       if (!user?.id) return toast.error("Log in to join the conversation");
@@ -98,6 +138,51 @@ export default function GetPosts() {
     },
     [user?.id, likeMutation]
   );
+
+  const handleAddComment = useCallback(
+    (e: React.FormEvent, postId: string) => {
+      e.preventDefault();
+      if (!user?.id) return toast.error("Log in to comment");
+      const text = draft[postId];
+      if (!text?.trim()) return;
+
+      addCommentMutation.mutate(
+        {
+          postId,
+          comment: text,
+          userId: user.id,
+          name: user.name || "Anonymous",
+        },
+        {
+          onSuccess: () => {
+            setDraft((prev) => ({ ...prev, [postId]: "" }));
+          },
+        }
+      );
+    },
+    [draft, user, addCommentMutation]
+  );
+
+  const handleDeletePost = useCallback(
+    (postId: string) => {
+      if (!confirm("Are you sure you want to delete this post?")) return;
+      deletePostMutation.mutate(postId);
+    },
+    [deletePostMutation]
+  );
+
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      if (!confirm("Delete this comment?")) return;
+      deleteCommentMutation.mutate(commentId);
+    },
+    [deleteCommentMutation]
+  );
+
+  const isLoading = (key: string) => {
+    if (key.startsWith("delete-post")) return deletePostMutation.isPending;
+    return false;
+  };
 
   if (postsQuery.isPending || commentsQuery.isPending)
     return <LoadingSkeleton />;
@@ -153,6 +238,10 @@ export default function GetPosts() {
                   newComment={draft}
                   setNewComment={setDraft}
                   handleLike={handleLike}
+                  handleAddComment={handleAddComment}
+                  handleDeletePost={handleDeletePost}
+                  handleDeleteComment={handleDeleteComment}
+                  isLoading={isLoading}
                 />
               </motion.div>
             ))}

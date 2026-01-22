@@ -1,66 +1,75 @@
 import { Connect } from "@/dbConfig/dbConfig";
 import User from "@/app/models/userModel";
-import { Account, Profile, Session } from "next-auth";
+import { Account, Profile } from "next-auth";
 import { JWT } from "next-auth/jwt";
-import { AdapterUser } from "next-auth/adapters";
-import bcrypt from "bcrypt";
+
 export const callbacks = {
   async signIn({
-    user,
     account,
     profile,
   }: {
-    user: AdapterUser | typeof User;
     account: Account | null;
     profile?: Profile;
   }) {
+    // Only handle logic for Google provider
     if (account?.provider === "google" && profile?.email) {
       try {
         await Connect();
 
-        const existingUser = await User.findOne({
-          Email: profile.email,
-        });
+        const userEmail = profile.email.toLowerCase();
 
-        if (!existingUser) {
-          const secureRandomString = await bcrypt.hash(
-            profile.email + Date.now,
-            10
-          );
-
-          const newUser = new User({
-            Name: profile.name,
-            Email: profile.email.toLowerCase(),
-            Password: secureRandomString,
-          });
-          await newUser.save();
-        }
+        // Check if user exists, if not, create them
+        // Using findOneAndUpdate with upsert is more atomic and efficient
+        await User.findOneAndUpdate(
+          { Email: userEmail },
+          {
+            $setOnInsert: {
+              Name: profile.name,
+              Email: userEmail,
+              UrlImageProfile: profile.image || (profile as any).picture, // Google uses .picture
+              // OAuth users don't need a password. 
+              // We leave it undefined or use a flag to indicate OAuth.
+            },
+          },
+          { upsert: true, new: true }
+        );
 
         return true;
       } catch (error) {
-        console.error("Google sign-in error:", error);
-        return false;
+        console.error("SignIn Callback Error:", error);
+        return false; // Prevents sign in if DB fails
       }
     }
-    return true;
+    return true; // Allow other providers (like Credentials)
   },
 
-  async jwt({ token, user }: { token: JWT; user?: AdapterUser | User }) {
+  async jwt({ token, user, trigger, session }: { token: JWT; user?: any; trigger?: string; session?: any }) {
+    // Initial sign in: attach DB fields to the token
     if (user) {
-      token.id = user.id;
-      token.email = user.email;
-      token.name = user.name;
+      await Connect();
+      const dbUser = await User.findOne({ Email: user.email?.toLowerCase() });
+      
+      if (dbUser) {
+        token.id = dbUser._id.toString();
+        token.name = dbUser.Name;
+        token.picture = dbUser.UrlImageProfile;
+      }
     }
+
+    // Handle session updates (e.g., if user changes their name/image)
+    if (trigger === "update" && session) {
+      return { ...token, ...session.user };
+    }
+
     return token;
   },
 
-  async session({ session, token }: { session: Session; token: JWT }) {
-    if (token) {
-      session.user = {
-        id: token.sub,
-        email: token.email,
-        name: token.name,
-      };
+  async session({ session, token }: { session: any; token: JWT }) {
+    if (token && session.user) {
+      session.user.id = token.id as string;
+      session.user.name = token.name;
+      session.user.email = token.email;
+      session.user.image = token.picture;
     }
     return session;
   },

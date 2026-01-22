@@ -7,7 +7,7 @@ import { Toaster, toast } from "sonner";
 import { CldUploadWidget } from "next-cloudinary";
 import { useRouter } from "next/navigation";
 import LoginWithGoogle from "@/app/components/buttons/LoginWithGoogle";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ImagePlus, Send, Loader2, X, Sparkles } from "lucide-react";
 
 interface NewPost {
@@ -17,13 +17,15 @@ interface NewPost {
   imageUrl: string;
 }
 
+const initialFormState: NewPost = {
+  title: "",
+  content: "",
+  ImageId: "",
+  imageUrl: "",
+};
+
 export default function NewPost() {
-  const [newPostForm, setNewPostForm] = useState<NewPost>({
-    title: "",
-    content: "",
-    ImageId: "",
-    imageUrl: "",
-  });
+  const [newPostForm, setNewPostForm] = useState<NewPost>(initialFormState);
   const [loading, setLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
@@ -38,6 +40,21 @@ export default function NewPost() {
   ) => {
     const { name, value } = e.target;
     setNewPostForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleUploadSuccess = (result: any) => {
+    if (result?.event === "success") {
+      setNewPostForm((prev) => ({
+        ...prev,
+        ImageId: result.info.public_id,
+        imageUrl: result.info.secure_url,
+      }));
+      toast.success("Image ready!");
+    }
+  };
+
+  const removeImage = () => {
+    setNewPostForm((prev) => ({ ...prev, ImageId: "", imageUrl: "" }));
   };
 
   const handlePostSubmit = async (e: React.FormEvent) => {
@@ -62,6 +79,12 @@ export default function NewPost() {
 
       if (response.data.success || response.status === 201) {
         toast.success("Post is now live!");
+
+        // 1. Clear the inputs
+        setNewPostForm(initialFormState);
+
+        // 2. Refresh server data and redirect
+        router.refresh();
         router.push("/");
       }
     } catch (error: any) {
@@ -88,7 +111,7 @@ export default function NewPost() {
             Join the Community
           </h2>
           <p className="text-gray-500 mb-8">
-            Sign in to share your thoughts and stories with the world.
+            Sign in to share your stories with the world.
           </p>
           <LoginWithGoogle />
         </motion.div>
@@ -111,50 +134,59 @@ export default function NewPost() {
         </header>
 
         <form onSubmit={handlePostSubmit} className="space-y-8">
-          {/* Cover Image Upload Area */}
           <div className="relative group">
             <CldUploadWidget
               uploadPreset="hg1ghiyh"
               onSuccess={handleUploadSuccess}
             >
               {({ open }) => (
-                <button
-                  type="button"
-                  onClick={() => open()}
-                  className={`w-full overflow-hidden rounded-3xl transition-all duration-300 border-2 border-dashed ${
-                    newPostForm.imageUrl
-                      ? "border-transparent"
-                      : "border-gray-200 bg-gray-50 h-64 hover:bg-gray-100 hover:border-blue-400"
-                  }`}
-                >
-                  {newPostForm.imageUrl ? (
-                    <div className="relative group">
-                      <img
-                        src={newPostForm.imageUrl}
-                        className="w-full h-[400px] object-cover rounded-3xl"
-                        alt="Cover"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                        <p className="text-white font-bold flex items-center gap-2">
-                          <ImagePlus size={20} /> Change Cover Image
-                        </p>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => open()}
+                    className={`w-full overflow-hidden rounded-3xl transition-all duration-300 border-2 border-dashed ${
+                      newPostForm.imageUrl
+                        ? "border-transparent"
+                        : "border-gray-200 bg-gray-50 h-64 hover:bg-gray-100 hover:border-blue-400"
+                    }`}
+                  >
+                    {newPostForm.imageUrl ? (
+                      <div className="relative group">
+                        <img
+                          src={newPostForm.imageUrl}
+                          className="w-full h-[400px] object-cover rounded-3xl"
+                          alt="Cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                          <p className="text-white font-bold flex items-center gap-2">
+                            <ImagePlus size={20} /> Change Cover Image
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-gray-400">
-                      <ImagePlus size={40} strokeWidth={1.5} />
-                      <span className="font-semibold text-lg">
-                        Add a cover photo
-                      </span>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-gray-400">
+                        <ImagePlus size={40} strokeWidth={1.5} />
+                        <span className="font-semibold text-lg">
+                          Add a cover photo
+                        </span>
+                      </div>
+                    )}
+                  </button>
+                  {newPostForm.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-4 right-4 z-10 bg-white/90 p-2 rounded-full text-red-500 shadow-md hover:bg-red-50 transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
                   )}
-                </button>
+                </div>
               )}
             </CldUploadWidget>
           </div>
 
           <div className="space-y-6">
-            {/* Title Input */}
             <input
               name="title"
               value={newPostForm.title}
@@ -165,7 +197,6 @@ export default function NewPost() {
               required
             />
 
-            {/* Content Textarea */}
             <div className="relative">
               <textarea
                 name="content"
@@ -176,8 +207,6 @@ export default function NewPost() {
                 maxLength={1000}
                 required
               />
-
-              {/* Progress Indicator */}
               <div className="flex justify-end gap-4 text-xs font-medium text-gray-400 mt-4 border-t pt-4">
                 <span>{newPostForm.title.length}/100 Title</span>
                 <span>{newPostForm.content.length}/1000 Content</span>
@@ -185,8 +214,7 @@ export default function NewPost() {
             </div>
           </div>
 
-          {/* Action Bar */}
-          <div className="flex items-center justify-between pt-6">
+          <div className="flex items-center justify-end pt-6">
             <button
               type="submit"
               disabled={loading}
@@ -209,15 +237,4 @@ export default function NewPost() {
       </motion.div>
     </div>
   );
-
-  function handleUploadSuccess(result: any) {
-    if (result?.event === "success") {
-      setNewPostForm((prev) => ({
-        ...prev,
-        ImageId: result.info.public_id,
-        imageUrl: result.info.secure_url,
-      }));
-      toast.success("Image ready!");
-    }
-  }
 }

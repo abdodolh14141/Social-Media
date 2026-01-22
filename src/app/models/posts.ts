@@ -1,6 +1,17 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
-const postSchema = new mongoose.Schema({
+export interface IPost extends Document {
+  IdUserCreated: mongoose.Types.ObjectId;
+  Title: string;
+  Content: string;
+  AuthorName: string;
+  PublicImage?: string;
+  Like: number;
+  likedBy: string[];
+  createdAt: Date;
+}
+
+const postSchema = new Schema({
   IdUserCreated: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -38,6 +49,6 @@ const postSchema = new mongoose.Schema({
   },
 });
 
-const Posts = mongoose.models.Posts || mongoose.model("Posts", postSchema);
+const Posts = mongoose.models.Posts || mongoose.model<IPost>("Posts", postSchema);
 
 export default Posts;
