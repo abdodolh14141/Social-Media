@@ -92,7 +92,7 @@ export default function Header() {
               <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800" />
 
               <Link
-                href={`/ProfileUser/${session?.user?.id || ""}`} // Ensure ID is present
+                href={`/profileAccount/${session?.user?.id || ""}`} // Ensure ID is present
                 className="group flex items-center gap-2"
               >
                 {session.user.image ? (

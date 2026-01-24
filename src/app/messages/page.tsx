@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import axios from "axios";
 
 interface Conversation {
   _id: string;
@@ -29,9 +30,9 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch("/api/messages/conversations");
-      if (res.ok) {
-        const data = await res.json();
+      const res = await axios.get("/api/messages/conversations");
+      if (res.status === 200) {
+        const data = res.data;
         setConversations(data.conversations);
       }
     } catch (error) {

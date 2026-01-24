@@ -1,5 +1,5 @@
 import Header from "./components/nav/Header";
-import Footer from "./components/lastNav/headerLast";
+import Footer from "./components/footer/headerLast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Metadata } from "next";
 import "./globals.css";

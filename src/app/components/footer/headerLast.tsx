@@ -17,14 +17,14 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative overflow-hidden border-t border-gray-100 bg-white pt-20 pb-10 dark:border-white/[0.08] dark:bg-[#030712]">
+    <footer className="relative overflow-hidden border-t border-gray-100 bg-white pt-5  dark:border-white/[0.08] dark:bg-[#030712]">
       {/* Dynamic Background Blobs */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -right-[5%] h-[400px] w-[400px] rounded-full bg-red-500/5 blur-[120px] dark:bg-red-500/10" />
         <div className="absolute -bottom-[10%] -left-[5%] h-[400px] w-[400px] rounded-full bg-blue-500/5 blur-[120px] dark:bg-purple-500/10" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-6">
+      <div className="mx-auto max-w-8xl p-5 m-5">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
           {/* Brand Column */}
           <div className="lg:col-span-4 space-y-8">
@@ -63,24 +63,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="lg:col-span-2">
-            <h3 className="mb-6 text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white">
-              Explore
-            </h3>
-            <ul className="space-y-4">
-              {["About", "Projects", "Blog", "Stack"].map((item) => (
-                <li key={item}>
-                  <Link
-                    href={`/${item.toLowerCase()}`}
-                    className="text-gray-600 transition-colors hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
 
           {/* Social Links */}
           <div className="lg:col-span-2">
@@ -92,7 +74,7 @@ export default function Footer() {
               <SocialLink
                 icon={<Linkedin size={18} />}
                 label="LinkedIn"
-                href="#"
+                href=""
               />
               <SocialLink
                 icon={<Twitter size={18} />}
@@ -134,38 +116,23 @@ export default function Footer() {
         <div className="mt-20 flex flex-col items-center justify-between gap-6 border-t border-gray-100 pt-10 dark:border-white/[0.05] md:flex-row">
           <div className="flex flex-col items-center gap-2 md:items-start md:gap-1">
             <p className="text-sm font-medium text-gray-900 dark:text-white">
-              © {currentYear} Abdo Dolh. All rights reserved.
+              © {currentYear} Abdulruhman Adel. All rights reserved.
             </p>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span>Made with</span>
               <Heart size={12} className="fill-red-500 text-red-500" />
-              <span>in [Your City]</span>
+              <span>in Egypt</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-8">
-            <div className="hidden items-center gap-6 text-sm font-medium text-gray-500 md:flex">
-              <Link
-                href="/privacy"
-                className="hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                Privacy
-              </Link>
-              <Link
-                href="/terms"
-                className="hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                Terms
-              </Link>
-            </div>
-          </div>
+          
         </div>
       </div>
     </footer>
   );
 }
 
-function SocialLink({ icon, label, href }) {
+function SocialLink({ icon, label, href }: any) {
   return (
     <li>
       <a

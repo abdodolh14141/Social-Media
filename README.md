@@ -1,36 +1,61 @@
-# Social Web - Modern Social Media Platform
+# 🌍 Social Web - Next-Gen Social Media Platform
 
-A full-stack social media application built with modern technologies, featuring real-time messaging, post interactions, and a responsive UI.
+> **Live Demo:** [**Explore Social Web**](https://social-media-one-sigma.vercel.app?_vercel_share=EtJs1cxgDHHgvdytf7pM8dMt45HGTWKW)
 
-## 🚀 Tech Stack
+A high-performance, full-stack social media application built with the latest web technologies. Designed for speed, scalability, and a premium user experience.
+
+---
+
+## 🚀 Key Features
+
+### 🔐 Advanced Authentication & Security
+- **Multi-Method Login**: Sign in securely using **Google (OAuth)** or traditional Email/Password.
+- **Secure Data**: All sensitive data is encrypted and stored securely in **MongoDB**.
+- **Password Recovery**: Integrated **OTP (One-Time Password)** system using **Nodemailer** for secure password resets via Gmail.
+- **Security Best Practices**: Protection against ReDoS, XSS, and data exposure.
+
+### 📸 Rich Media & Content
+- **Create Posts**: Share your thoughts with text and high-quality images.
+- **Cloud Storage**: All photos are optimized and served globally via **Cloudinary**.
+- **Engagement**: Like posts and join conversations with real-time comments.
+
+### 👥 Social Connectivity
+- **Follow System**: Build your network by following other users.
+- **User Profiles**: Customizable profiles showcasing activity and followers.
+- **Smart Search**: Instantly find any user account with optimized search functionality.
+
+### ⚡ Performance & Quality
+- **Clean Code Architecture**: Built with a focus on maintainability, scalability, and modern coding standards.
+- **Speed**: Optimized database queries and frontend performance for a lag-free experience.
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
 - **Framework**: [Next.js 15](https://nextjs.org/) (React 19)
-- **Styling**: [TailwindCSS](https://tailwindcss.com/)
-- **Animations**: [Framer Motion](https://www.framer.com/motion/)
-- **State/Fetching**: [TanStack Query](https://tanstack.com/query) & [SWR](https://swr.vercel.app/)
-- **Icons**: [Lucide React](https://lucide.dev/) & FontAwesome
+- **Styling**: [TailwindCSS](https://tailwindcss.com/) for a sleek, responsive design.
+- **State Management**: [TanStack Query](https://tanstack.com/query) for efficient data fetching.
+- **Animations**: [Framer Motion](https://www.framer.com/motion/) for smooth interactions.
 
-### Backend
-- **Framework**: [ElysiaJS](https://elysiajs.com/)
-- **Runtime**: [Bun](https://bun.sh/) (Backend execution) & Node.js (Frontend)
-- **Database**: [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)
-- **Real-time**: [Socket.IO](https://socket.io/)
+### Backend & Database
+- **API Framework**: [ElysiaJS](https://elysiajs.com/) (running on Bun) for lightning-fast API responses.
+- **Database**: [MongoDB](https://www.mongodb.com/) with Mongoose for flexible data modeling.
+- **Real-Time**: [Socket.IO](https://socket.io/) for instant updates.
+- **Email Service**: [Nodemailer](https://nodemailer.com/) for reliable transactional emails.
 
-### Authentication & Tools
-- **Auth**: [NextAuth.js](https://next-auth.js.org/)
-- **Image Storage**: Cloudinary (`next-cloudinary`)
-- **Language**: TypeScript
+---
 
-## 🛠️ Prerequisites
+## 📦 Getting Started
 
-- **Node.js** (v18+ recommended)
-- **Bun** (Required for the Elysia backend) - [Install Bun](https://bun.sh/docs/installation)
-- **MongoDB** instance (Local or Atlas)
+### Prerequisites
+- **Node.js** (v18+)
+- **Bun** (for backend)
+- **MongoDB** Connection String
 
-## 📦 Installation
+### Installation
 
-1.  **Clone the repository**
+1.  **Clone the Repository**
     ```bash
     git clone https://github.com/abdodolh14141/Social-Media.git
     cd Social-Media
@@ -39,86 +64,57 @@ A full-stack social media application built with modern technologies, featuring 
 2.  **Install Dependencies**
     ```bash
     npm install
+    # or
+    bun install
     ```
 
-3.  **Environment Setup**
-    Create a `.env` file in the root directory with the following variables:
+3.  **Configure Environment**
+    Create a `.env` file in the root directory:
 
     ```env
     # Database
-    URL_MONGO=mongodb://localhost:27017/social_media # Or your MongoDB Atlas URL
+    URL_MONGO=your_mongodb_connection_string
 
-    # NextAuth (Authentication)
+    # Authentication (NextAuth)
     NEXTAUTH_URL=http://localhost:3000
-    NEXTAUTH_SECRET=your_super_secret_key
+    NEXTAUTH_SECRET=your_secret_key
     
-    # OAuth Providers (Google Example)
+    # OAuth (Google)
     GOOGLE_CLIENT_ID=your_google_client_id
     GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-    # Cloudinary (Image Uploads)
+    # Cloudinary (Images)
     NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+    CLOUDINARY_API_KEY=your_api_key
+    CLOUDINARY_API_SECRET=your_api_secret
+
+    # Email (Nodemailer)
+    EMAIL_USER=your_gmail_address
+    EMAIL_PASS=your_gmail_app_password
     ```
 
-## 🏃‍♂️ Running the Project
+4.  **Run the Application**
+    Launch both Frontend and Backend concurrently:
+    ```bash
+    npm run dev
+    ```
+    - Frontend: `http://localhost:3000`
+    - Backend: `http://localhost:4000`
 
-The project uses `concurrently` to run both the Next.js frontend and Elysia backend in a single command.
-
-```bash
-npm run dev
-```
-
-- **Frontend**: Runs on `http://localhost:3000`
-- **Backend API**: Runs on `http://localhost:4000` (Elysia)
-
-### Separate Execution
-
-If you prefer running them separately:
-
-- **Frontend only**: `npm run dev:frontend`
-- **Backend only**: `npm run dev:backend` (requires Bun)
-
-## 📁 Project Structure
-
-```
-├── src
-│   ├── app              # Next.js App Router (Frontend Pages & Components)
-│   │   ├── components   # Reusable UI components (Posts, Navbar, etc.)
-│   │   ├── models       # Mongoose Schemas (Shared)
-│   │   └── ...
-│   ├── backend          # ElysiaJS Backend
-│   │   ├── index.ts     # Backend Entry Point
-│   │   └── routes       # API Routes (posts, users, messages)
-│   ├── dbConfig         # Database Connection Logic
-│   └── ...
-├── public               # Static Assets
-└── package.json         # Project Dependencies & Scripts
-```
-
-## ✨ Key Features
-
-- **User Authentication**: Secure login/register with NextAuth.
-- **Feed System**: Create posts with text and images.
-- **Interactions**: Like and comment on posts.
-- **Profiles**: User profiles with follower/following stats.
-- **Real-time Messaging**: Chat with other users (powered by Socket.IO).
-- **Search**: Find users and profiles.
-- **Responsive Design**: Optimized for all devices.
-
-## 🔒 Security Measures
-
-- **Data Protection**: Sensitive fields (passwords) are excluded from default queries.
-- **API Security**: ReDoS protection and Security Headers (Helmet-style) implemented.
-- **Input Validation**: Strict type checking and validation on API inputs.
+---
 
 ## 🤝 Contributing
 
-1.  Fork the repository.
-2.  Create a feature branch (`git checkout -b feature/AmazingFeature`).
-3.  Commit your changes.
-4.  Push to the branch.
-5.  Open a Pull Request.
+This project is a continuous learning journey focused on code quality and exploring new tools. Contributions, suggestions, and feature requests are welcome!
 
-## 📄 License
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
-This project is open-source.
+---
+
+## 📜 License
+
+Distributed under the MIT License.

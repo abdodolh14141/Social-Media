@@ -14,7 +14,7 @@ import {
 import { CldImage } from "next-cloudinary";
 import Link from "next/link";
 import { memo, useState, FormEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -100,7 +100,7 @@ export const PostItem = memo<PostItemProps>(
             </div>
             <div>
               <Link
-                href={`/ProfileUser/${post.IdUserCreated}`}
+                href={`/profileAccount/${post.IdUserCreated}`}
                 className="text-xl font-black text-gray-900 dark:text-white hover:text-indigo-500 transition-colors"
               >
                 {post.AuthorName || "Anonymous User"}

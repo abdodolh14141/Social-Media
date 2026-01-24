@@ -71,18 +71,3 @@ function SectionHeader({
   );
 }
 
-function HeroCTA() {
-  return (
-    <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white shadow-xl transition-transform hover:scale-[1.01]">
-      <Sparkle className="absolute -right-4 -top-4 h-24 w-24 opacity-20 transition-transform group-hover:rotate-12 group-hover:scale-110" />
-      <h2 className="text-2xl font-bold">Share your thoughts</h2>
-      <p className="mt-2 max-w-md text-blue-100">
-        Join our community to create posts, follow creators, and join the
-        conversation.
-      </p>
-      <button className="mt-6 rounded-full bg-white px-6 py-2 text-sm font-bold text-blue-600 transition-colors hover:bg-blue-50">
-        Get Started
-      </button>
-    </div>
-  );
-}

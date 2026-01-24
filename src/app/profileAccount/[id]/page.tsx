@@ -36,21 +36,21 @@ const itemVariants = {
 };
 
 export default function ProfileUser() {
-  const { data: session, status } = useSession(); // Correct way to use session
+  const { data: session } = useSession(); // Correct way to use session
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   
   const params = useParams();
-  const userId = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : undefined;
+  const userId = params.id;
 
   // Determine ownership based on session data
   const isOwnAccount = session?.user?.email === profileData?.email;
   const isLogin = !!session?.user;
 
   const fetchProfileData = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) return toast.error("Account not found");
     setLoadingProfile(true);
     try {
       const { data } = await axios.post("/api/users/searchProfile", { id: userId });

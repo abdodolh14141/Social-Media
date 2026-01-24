@@ -69,7 +69,7 @@ export const createMessagesRoutes = (io: Server) => new Elysia({ prefix: '/api/m
                 set.status = 401;
                 return { error: "Unauthorized" };
             }
-            const currentUserId = token.sub;
+            const currentUserId = token.id || token.sub;
 
             const conversations = await Message.aggregate([
                 {
