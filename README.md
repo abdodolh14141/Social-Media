@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # 🌍 Social Web - Next-Gen Social Media Platform
+=======
+**# Social Web - Modern Social Media Platform
+>>>>>>> origin/master
 
 > **Live Demo:** [**Explore Social Web**](https://social-media-one-sigma.vercel.app?_vercel_share=EtJs1cxgDHHgvdytf7pM8dMt45HGTWKW)
 
@@ -113,8 +117,13 @@ This project is a continuous learning journey focused on code quality and explor
 4.  Push to the Branch (`git push origin feature/AmazingFeature`)
 5.  Open a Pull Request
 
+<<<<<<< HEAD
 ---
 
 ## 📜 License
 
 Distributed under the MIT License.
+=======
+This project is open-source.
+**
+>>>>>>> origin/master
