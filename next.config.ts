@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
         destination: 'http://localhost:4000/api/users/:path*',
       },
       {
+        source: '/api/email/:path*',
+        destination: 'http://localhost:4000/api/email/:path*',
+      },
+      {
         source: '/socket.io/:path*',
         destination: 'http://localhost:4000/socket.io/:path*',
       },

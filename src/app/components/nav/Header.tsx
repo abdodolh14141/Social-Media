@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import Link from "next/link";
 import Logout from "../buttons/logoutButton";
 import { usePathname } from "next/navigation";
@@ -15,7 +15,7 @@ interface NavLinkProps {
 }
 
 export default function Header() {
-  const { data: session, status } = useSession();
+  const { data: session, status } = useElysiaSession();
   const { unreadCount } = useSocket();
   const pathname = usePathname();
 

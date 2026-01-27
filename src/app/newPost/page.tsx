@@ -6,7 +6,7 @@ import { Toaster, toast } from "sonner";
 import { CldUploadWidget } from "next-cloudinary";
 import LoginWithGoogle from "@/app/components/buttons/LoginWithGoogle";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import {
   ImagePlus,
   X,
@@ -28,7 +28,7 @@ export default function NewPost() {
   });
   const [loading, setLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const { data: session, status } = useSession();
+  const { data: session, status } = useElysiaSession();
   const router = useRouter();
 
   useEffect(() => setIsMounted(true), []);

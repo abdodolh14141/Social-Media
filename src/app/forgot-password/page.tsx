@@ -26,14 +26,8 @@ export default function ResetPass() {
     setLoading(true);
 
     try {
-      const res = await axios.post("/api/send-email", {
+      const res = await axios.post("/api/email/send", {
         to: emailInput,
-        subject: "Password Reset Request",
-        resetLink: `${
-          window.location.origin
-        }/reset-password?token=${generateToken()}&email=${encodeURIComponent(
-          emailInput
-        )}`,
       });
 
       if (res.status === 200) {
@@ -82,10 +76,9 @@ export default function ResetPass() {
       if (isValid) {
         toast.success("Verification successful! Redirecting...");
 
-        // Redirect to reset password page with token as parameter
-        const token = generateToken();
+        // Redirect to reset password page with code as parameter
         router.push(
-          `/reset-password?token=${token}&email=${encodeURIComponent(
+          `/reset-password?code=${verificationCode}&email=${encodeURIComponent(
             emailInput
           )}`
         );
@@ -111,27 +104,23 @@ export default function ResetPass() {
     code: string,
     email: string
   ): Promise<boolean> => {
-    // Simulate API call to verify token
-    // In production, you would call your backend API
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // For demo purposes, accept any 6-digit code
-        resolve(code.length === 6 && /^\d+$/.test(code));
-      }, 1000);
-    });
+    try {
+      const res = await axios.post("/api/email/verify", {
+        email,
+        code,
+      });
+      return res.status === 200;
+    } catch (error) {
+      console.error("Verification error:", error);
+      return false;
+    }
   };
 
   const resendVerification = async () => {
     setLoading(true);
     try {
-      const res = await axios.post("/api/send-email", {
+      const res = await axios.post("/api/email/send", {
         to: emailInput,
-        subject: "Password Reset Verification Code",
-        resetLink: `${
-          window.location.origin
-        }/reset-password?token=${generateToken()}&email=${encodeURIComponent(
-          emailInput
-        )}`,
       });
 
       if (res.status === 200) {
@@ -147,8 +136,8 @@ export default function ResetPass() {
 
   if (tokenSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-        <div className="max-w-md w-full shadow-2xl bg-white rounded-2xl text-gray-800 overflow-hidden transition duration-300 hover:shadow-xl">
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-4xl w-full shadow-2xl bg-white rounded-2xl text-gray-800 overflow-hidden transition duration-300 hover:shadow-xl">
           <div className="py-6 px-8 bg-gradient-to-r from-green-600 to-emerald-700 text-center">
             <h2 className="text-3xl font-bold text-white">
               <i className="fas fa-envelope mr-2"></i>Check Your Email

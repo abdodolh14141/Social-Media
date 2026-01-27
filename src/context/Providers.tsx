@@ -4,6 +4,7 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactNode, useState } from "react";
 import ProviderSession from "./ProviderSession";
 import { SocketProvider } from "./SocketContext";
+import Snowfall from "react-snowfall";
 
 interface Props {
   children: ReactNode;
@@ -29,7 +30,16 @@ export default function Providers({ children }: Props) {
       <ProviderSession>
         {/* SocketProvider must be inside ProviderSession to access useSession() */}
         <SocketProvider>
-          {children}
+<Snowfall 
+        snowflakeCount={150} // 1000 might be heavy on performance, 200-400 is usually plenty
+        color="#fff" 
+        style={{
+          position: 'fixed',
+          width: '100vw',
+          height: '100vh',
+          zIndex: 0, // Set to 0 and ensure card is z-10
+        }} 
+      />          {children}
         </SocketProvider>
       </ProviderSession>
     </QueryClientProvider>

@@ -19,6 +19,11 @@ export const usersRoutes = new Elysia({ prefix: '/api/users' })
     .onBeforeHandle(async () => {
         await Connect();
     })
+    // Get Current Session
+    .get('/session', async ({ request }) => {
+        const token = await validateAuth(request);
+        return { session: token };
+    })
     // Add Follow
     .post('/AddFollow', async ({ body, set }: any) => {
         try {

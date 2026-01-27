@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import { toast, Toaster } from "sonner";
 import Link from "next/link";
 import { CldImage } from "next-cloudinary";
@@ -63,7 +63,7 @@ const PostCard = ({
   initialComments: Comment[];
   onDelete: (id: string) => void;
 }) => {
-  const { data: session } = useSession();
+  const { data: session } = useElysiaSession();
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [commentText, setCommentText] = useState("");

@@ -4,13 +4,16 @@ import { Sparkle, LayoutGrid, Info } from "lucide-react";
 import AccountSearch from "@/app/searchAccounts/SearchComponent";
 import PostFeed from "@/app/components/Posts/fetchPosts/getPosts";
 import AboutSection from "@/app/about/page";
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import NewPost from "./components/Posts/newPost/newPage";
 
 export default function Home() {
-  const isAuth = useSession()?.data ? true : false;
+  const isAuth = useElysiaSession().session ? true : false;
   return (
+    <>
+
     <div className="mx-auto max-w-7xl w-full px-4 py-8">
+
       {/* 1. Search Header Area */}
       <header className="mb-8 transition-all duration-300">
         <AccountSearch />
@@ -46,6 +49,8 @@ export default function Home() {
         </footer>
       </main>
     </div>
+    </>
+    
   );
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import { useSocket } from "@/context/SocketContext";
 import { Send, Loader2, ArrowLeft, MoreVertical } from "lucide-react";
 import Link from "next/link";
@@ -25,7 +25,7 @@ interface UserProfile {
 }
 
 export default function ChatPage() {
-  const { data: session } = useSession();
+  const { data: session } = useElysiaSession();
   const { socket } = useSocket();
   const params = useParams();
   const otherUserId = params.id as string;

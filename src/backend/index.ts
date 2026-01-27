@@ -5,6 +5,7 @@ import { Connect } from '../dbConfig/dbConfig';
 import { postsRoutes } from './routes/posts';
 import { createMessagesRoutes } from './routes/messages';
 import { usersRoutes } from './routes/users';
+import { emailRoutes } from './routes/email';
 
 // Initialize Database Connection
 Connect().then(() => {
@@ -45,6 +46,7 @@ const io = new Server(server.server, {
 app.use(postsRoutes);
 app.use(createMessagesRoutes(io));
 app.use(usersRoutes);
+app.use(emailRoutes);
 
 io.on('connection', (socket) => {
     console.log('Socket client connected:', socket.id);

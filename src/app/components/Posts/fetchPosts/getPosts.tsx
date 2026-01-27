@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
 import {
@@ -42,7 +42,7 @@ const fetchComments = () =>
     .then((r) => r.data.comments ?? []);
 
 export default function GetPosts() {
-  const { data: session } = useSession();
+  const { data: session } = useElysiaSession();
   const queryClient = useQueryClient();
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });

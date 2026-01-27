@@ -41,7 +41,7 @@ export const providers = [
 
         const user = await User.findOne({
           Email: credentials.email,
-        });
+        }).select("+Password");
         if (!user) {
           throw new Error("No user found with this email");
         }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
 import { CldUploadWidget } from "next-cloudinary";
@@ -29,7 +29,7 @@ export default function NewPost() {
   const [loading, setLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { data: session, status } = useElysiaSession();
 
   useEffect(() => {
     setIsMounted(true);

@@ -3,7 +3,7 @@
 import axios from "axios";
 import { useParams } from "next/navigation";
 import { toast, Toaster } from "sonner";
-import { useSession } from "next-auth/react";
+import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,7 +36,7 @@ const itemVariants = {
 };
 
 export default function ProfileUser() {
-  const { data: session } = useSession(); // Correct way to use session
+  const { data: session } = useElysiaSession(); // Correct way to use session
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
