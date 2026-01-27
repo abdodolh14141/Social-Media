@@ -7,6 +7,8 @@ import { Connect } from '../../dbConfig/dbConfig';
 
 const isValidObjectId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
+export const dynamic = 'force-dynamic'; // Ensures Vercel fetches fresh data every time
+
 export const postsRoutes = new Elysia({ prefix: '/api/posts' })
     .onBeforeHandle(async () => {
         await Connect();
@@ -260,3 +262,4 @@ export const postsRoutes = new Elysia({ prefix: '/api/posts' })
             return { success: false, message: "Internal server error." };
         }
     });
+
