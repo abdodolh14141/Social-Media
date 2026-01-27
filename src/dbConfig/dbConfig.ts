@@ -32,11 +32,9 @@ export async function Connect(): Promise<mongoose.Connection> {
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false,
-      // In Serverless, we want to fail fast if the DB is down
-      serverSelectionTimeoutMS: 5000, 
-      // Do NOT use minPoolSize in Serverless; it can exhaust Atlas connections quickly
-      maxPoolSize: 1, 
+       serverSelectionTimeoutMS: 5000, // Fail after 5s instead of 30s
+      socketTimeoutMS: 45000,
+      family: 4, // Force IPv4, which can sometimes solve connection hangs in certain regions
     };
 
     cached.promise = mongoose.connect(mongoUrl, opts).then((m) => {
@@ -57,3 +55,4 @@ export async function Connect(): Promise<mongoose.Connection> {
 }
 
 export default mongoose;
+
