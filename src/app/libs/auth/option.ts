@@ -1,6 +1,4 @@
-import { type NextAuthOptions } from "next-auth";
-import { type CallbacksOptions } from "next-auth";
-import { type Providers } from "next-auth/providers";
+import { type NextAuthOptions, type CallbacksOptions } from "next-auth";
 // Assuming 'providers' and 'callbacks' are defined in separate files
 import { providers } from "./providers";
 import { callbacks as rawCallbacks } from "./callbacks"; // Rename to avoid conflict with final variable
@@ -16,7 +14,7 @@ const callbacks: CallbacksOptions = rawCallbacks;
 // --- Main Configuration Object ---
 export const AuthOptions: NextAuthOptions = {
   // 1. Providers: Ensure it's correctly typed from the imported file
-  providers: providers as Providers,
+  providers,
 
   // 2. Callbacks: Using the correctly typed and casted object
   callbacks,

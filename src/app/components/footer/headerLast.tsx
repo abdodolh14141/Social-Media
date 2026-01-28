@@ -97,17 +97,18 @@ export default function Footer() {
               <p className="mt-2 mb-6 text-sm text-gray-600 dark:text-gray-400">
                 Have an idea? Let's turn it into something incredible.
               </p>
-              <a
-                href="abdodolh14141@gmail.com"
-                className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-sm font-bold text-white transition-all hover:bg-red-600 active:scale-95 dark:bg-white dark:text-gray-900 dark:hover:bg-red-500 dark:hover:text-white"
-              >
-                <Mail size={18} />
+
+              <Link href={"/about"}>
+              <Mail size={18} />
                 Get in Touch
                 <ArrowUp
                   size={18}
                   className="rotate-45 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                 />
-              </a>
+              </Link>
+              
+                
+              
             </div>
           </div>
         </div>

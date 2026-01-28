@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "dev:frontend": "next dev",
-    "dev:backend": "C:\\Users\\Nassrat\\.bun\\bin\\bun.exe run src/backend/index.ts",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -25,6 +23,7 @@
     "crypto": "^1.0.1",
     "elysia": "^1.4.22",
     "eslint-plugin-jest-dom": "^5.5.0",
+    "file-type": "^21.3.0",
     "firebase": "^11.8.1",
     "framer-motion": "^12.16.0",
     "jsonwebtoken": "^9.0.2",

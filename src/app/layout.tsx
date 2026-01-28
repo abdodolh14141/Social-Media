@@ -7,7 +7,7 @@ import Providers from "@/context/Providers";
 
 export const metadata: Metadata = {
   title: "Social Media App",
-  description: "A social media application built with Next.js and React.",
+  description: "A social media application to react world",
   icons: {
     icon: "https://cdn-icons-png.flaticon.com/512/2065/2065157.png",
   },

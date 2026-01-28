@@ -1,6 +1,6 @@
 import { Elysia, t } from 'elysia';
 import mongoose from 'mongoose';
-import Posts from '../../app/models/posts';
+import Posts, { IPost } from '../../app/models/posts';
 import User from '../../app/models/userModel';
 import Comment from '../../app/models/comments';
 import { Connect } from '../../dbConfig/dbConfig';
@@ -79,7 +79,7 @@ export const postsRoutes = new Elysia({ prefix: '/api/posts' })
                 return { success: false, message: "User ID is required." };
             }
 
-            const postSnapshot = await Posts.findById(postId).select("likedBy").lean();
+            const postSnapshot = await Posts.findById(postId).select("likedBy").lean() as IPost | null;
             if (!postSnapshot) {
                 set.status = 404;
                 return { success: false, message: "Post not found." };

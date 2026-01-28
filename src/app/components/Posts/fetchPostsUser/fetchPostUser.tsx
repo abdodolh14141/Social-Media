@@ -8,7 +8,7 @@ import { CldImage } from "next-cloudinary";
 import axios from "axios";
 import Image from "next/image";
 import icon from "../../../../../public/iconAccount.png";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Heart, MessageSquare, Trash2, Send, Loader2 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -33,7 +33,7 @@ interface Post {
 /* ------------------------------------------------------------------ */
 /* Animation Variants                                                 */
 /* ------------------------------------------------------------------ */
-const postVariants = {
+const postVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,

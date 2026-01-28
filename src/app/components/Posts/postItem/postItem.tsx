@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { CldImage } from "next-cloudinary";
 import Link from "next/link";
-import { memo, useState, FormEvent } from "react";
+import { memo, useState, FormEvent, lazy } from "react";
 import { motion } from "framer-motion";
 
 /* ------------------------------------------------------------------ */
@@ -143,6 +143,7 @@ export const PostItem = memo<PostItemProps>(
                 crop="fill"
                 quality={90}
                 className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700"
+                loading="lazy"
               />
             </div>
           )}
@@ -252,7 +253,7 @@ export const PostItem = memo<PostItemProps>(
         )}
       </motion.article>
     );
-  }
+  },
 );
 
 PostItem.displayName = "PostItem";
