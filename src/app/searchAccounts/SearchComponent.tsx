@@ -62,7 +62,7 @@ export default function SearchAccount() {
           setHasSearched(true);
         }
       }, 250), // 250ms is the sweet spot for responsiveness
-    []
+    [],
   );
 
   // Cleanup on unmount
@@ -133,7 +133,7 @@ export default function SearchAccount() {
       <div className="mt-4 space-y-2 max-h-[60vh] overflow-y-auto rounded-xl min-h-[100px]">
         {searchResults.map((account) => (
           <Link
-            href={`/ProfileUser/${account._id}`}
+            href={`/profileAccount/${account._id}`}
             key={account._id}
             className="flex items-center p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-blue-400 dark:hover:border-blue-500 rounded-xl transition-all active:scale-[0.98] shadow-sm"
           >

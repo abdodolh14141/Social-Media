@@ -6,6 +6,8 @@ import Logout from "../buttons/logoutButton";
 import { usePathname } from "next/navigation";
 import { User, Home, Info, PlusCircle, MessageSquare } from "lucide-react";
 import { useSocket } from "@/context/SocketContext";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Define Props for NavLink
 interface NavLinkProps {
@@ -18,6 +20,7 @@ export default function Header() {
   const { data: session, status } = useElysiaSession();
   const { unreadCount } = useSocket();
   const pathname = usePathname();
+  const router = useRouter();
 
   const isLoading = status === "loading";
 
@@ -38,10 +41,18 @@ export default function Header() {
     );
   };
 
+  useEffect(() => {
+    try {
+      const session = useElysiaSession();
+      console.log(session);
+    } catch (error) {
+      console.log(error);
+    }
+  }, [router]);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        
         {/* Left: Logo & Core Nav */}
         <div className="flex items-center gap-8">
           <Link
@@ -57,8 +68,12 @@ export default function Header() {
           </Link>
 
           <nav className="flex items-center gap-1">
-            <NavLink href="/" icon={Home}>Feed</NavLink>
-            <NavLink href="/about" icon={Info}>About</NavLink>
+            <NavLink href="/" icon={Home}>
+              Feed
+            </NavLink>
+            <NavLink href="/about" icon={Info}>
+              About
+            </NavLink>
           </nav>
         </div>
 
@@ -73,7 +88,10 @@ export default function Header() {
                 className="relative group flex items-center justify-center p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                 title="Messages"
               >
-                <MessageSquare size={20} className="text-zinc-600 dark:text-zinc-400 group-hover:text-blue-600" />
+                <MessageSquare
+                  size={20}
+                  className="text-zinc-600 dark:text-zinc-400 group-hover:text-blue-600"
+                />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-950 animate-in zoom-in duration-300">
                     {unreadCount > 9 ? "9+" : unreadCount}

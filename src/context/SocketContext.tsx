@@ -31,16 +31,18 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     // Only connect if the user is authenticated
     if (status === "authenticated" && session?.user) {
       // Fetch initial unread count
-      axios.get('/api/messages/unread')
-        .then(res => {
+      axios
+        .get("/api/messages/unread")
+        .then((res) => {
           if (res.data?.unreadCount !== undefined) {
-             setUnreadCount(res.data.unreadCount);
+            setUnreadCount(res.data.unreadCount);
           }
         })
-        .catch(err => console.error("Failed to fetch unread count", err));
+        .catch((err) => console.error("Failed to fetch unread count", err));
 
       const socketInstance = io({
-        path: "/socket.io", // Standard Next.js custom path
+        path: "/socket.io",
+        transports: ["websocket"], // Force websocket to avoid polling 404s
         addTrailingSlash: false,
         reconnectionAttempts: 5,
       });
@@ -59,9 +61,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Listen for new messages
       socketInstance.on("new-message", (message: any) => {
-         // Optionally check if the message is from current conversation if needed
-         // For now, just increment global unread count
-         setUnreadCount(prev => prev + 1);
+        // Optionally check if the message is from current conversation if needed
+        // For now, just increment global unread count
+        setUnreadCount((prev) => prev + 1);
       });
 
       setSocket(socketInstance);
@@ -81,7 +83,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   }, [session, status]);
 
   return (
-    <SocketContext.Provider value={{ socket, onlineUsers, unreadCount, setUnreadCount }}>
+    <SocketContext.Provider
+      value={{ socket, onlineUsers, unreadCount, setUnreadCount }}
+    >
       {children}
     </SocketContext.Provider>
   );

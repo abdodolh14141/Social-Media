@@ -11,10 +11,12 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const httpServer = createServer((req: IncomingMessage, res: ServerResponse) => {
-    const parsedUrl = parse(req.url!, true);
-    handle(req, res, parsedUrl);
-  });
+  const httpServer = createServer(
+    (req: IncomingMessage, res: ServerResponse) => {
+      const parsedUrl = parse(req.url!, true);
+      handle(req, res, parsedUrl);
+    },
+  );
 
   const io = new Server(httpServer, {
     cors: {
@@ -22,6 +24,8 @@ app.prepare().then(() => {
       methods: ["GET", "POST"],
     },
   });
+
+  (global as any).io = io;
 
   io.on("connection", (socket: Socket) => {
     console.log("Client connected:", socket.id);
@@ -34,7 +38,7 @@ app.prepare().then(() => {
     socket.on("send-message", (data: any) => {
       // data: { senderId, recipientId, content, ... }
       const { recipientId } = data;
-      
+
       // Emit to recipient's room
       io.to(recipientId).emit("receive-message", data);
     });

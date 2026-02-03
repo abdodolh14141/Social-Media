@@ -10,14 +10,12 @@ interface Props {
 }
 
 export default function Providers({ children }: Props) {
-  // Using useState ensures QueryClient is only initialized once per browser session
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
             staleTime: 60 * 1000,
-            // Adding retry: false or 1 can be helpful for debugging socket-related queries
             retry: 1,
           },
         },
@@ -27,8 +25,10 @@ export default function Providers({ children }: Props) {
   return (
     <QueryClientProvider client={queryClient}>
       <ProviderSession>
-        {/* SocketProvider must be inside ProviderSession to access useSession() */}
-        <SocketProvider>{children}</SocketProvider>
+        <SocketProvider>
+          {/* 1. Main Application Content */}
+          {children}
+        </SocketProvider>
       </ProviderSession>
     </QueryClientProvider>
   );

@@ -4,10 +4,20 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import { useSocket } from "@/context/SocketContext";
-import { Send, Loader2, ArrowLeft, MoreVertical } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Send,
+  Loader2,
+  ArrowLeft,
+  MoreVertical,
+  User,
+  Phone,
+  Video,
+} from "lucide-react";
 import Link from "next/link";
 import { toast, Toaster } from "sonner";
 import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
   _id?: string;
@@ -18,236 +28,250 @@ interface Message {
   read?: boolean;
 }
 
-interface UserProfile {
-  name: string;
-  email: string;
-  image?: string;
-}
-
 export default function ChatPage() {
   const { data: session } = useElysiaSession();
   const { socket } = useSocket();
   const params = useParams();
   const otherUserId = params.id as string;
+  const currentUserId =
+    (session?.user as any)?.id || (session?.user as any)?._id;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // Fetch initial messages
+  const { isLoading: messagesLoading } = useQuery({
+    queryKey: ["messages", otherUserId],
+    queryFn: async () => {
+      const res = await axios.get(`/api/messages/${otherUserId}`);
+      const fetchedMessages = res.data.messages || [];
+      setMessages(fetchedMessages);
+      return fetchedMessages;
+    },
+    enabled: !!otherUserId && !!currentUserId,
+  });
 
-  // Fetch messages and user details
-  useEffect(() => {
-    if (!session?.user || !otherUserId) return;
+  // Fetch other user profile
+  const { data: userData } = useQuery({
+    queryKey: ["userProfile", otherUserId],
+    queryFn: async () => {
+      const res = await axios.post("/api/users/searchProfile", {
+        id: otherUserId,
+      });
+      return res.data.user;
+    },
+    enabled: !!otherUserId,
+  });
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Fetch messages
-        const msgRes = await fetch(`/api/messages/${otherUserId}`);
-        const msgData = await msgRes.json();
-        
-        if (msgRes.ok) {
-          setMessages(msgData.messages || []);
-        }
-
-        // Fetch user details
-        const userRes = await axios.post("/api/users/searchProfile", { id: otherUserId });
-        if (userRes.data?.user) {
-             const u = userRes.data.user;
-             setOtherUser({
-                 name: u.Name,
-                 email: u.Email,
-                 image: u.UrlImageProfile
-             });
-        }
-      } catch (error) {
-        console.error("Error fetching chat data:", error);
-        toast.error("Failed to load conversation");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [session, otherUserId]);
-
-  // Socket listeners
+  // Socket Logic
   useEffect(() => {
     if (!socket) return;
-
     const handleReceiveMessage = (data: Message) => {
-        // Only append if it belongs to this conversation
-       if (data.sender === otherUserId || data.recipient === otherUserId) {
-          setMessages((prev) => [...prev, data]);
-       }
+      // Ensure the message belongs to THIS conversation
+      if (data.sender === otherUserId || data.recipient === otherUserId) {
+        setMessages((prev) => [...prev, data]);
+      }
     };
-
     socket.on("new-message", handleReceiveMessage);
-
     return () => {
       socket.off("new-message", handleReceiveMessage);
     };
   }, [socket, otherUserId]);
 
+  // Scroll on new messages
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!newMessage.trim() || sending || !session?.user) return;
+    if (!newMessage.trim() || sending || !currentUserId) return;
 
     const content = newMessage.trim();
-    setNewMessage(""); 
+    setNewMessage("");
     setSending(true);
 
-    const senderId = (session.user as any).id || (session.user as any)._id;
-
-    // Optimistic update
     const tempMsg: Message = {
-        sender: senderId,
-        recipient: otherUserId,
-        content: content,
-        createdAt: new Date().toISOString(),
+      sender: currentUserId,
+      recipient: otherUserId,
+      content,
+      createdAt: new Date().toISOString(),
     };
-    
-    // We append nicely, but maybe we should wait for ID? 
-    // Usually fine to show optimistically and then replace, but for simplicity just append.
+
     setMessages((prev) => [...prev, tempMsg]);
 
     try {
-      const res = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sender: senderId,
-          recipient: otherUserId,
-          content,
-        }),
+      const res = await axios.post("/api/messages", {
+        sender: currentUserId,
+        recipient: otherUserId,
+        content,
       });
 
-      if (res.ok) {
-        const savedMsg = (await res.json()).data;
-        // Socket event is emitted by the backend upon successful save
-        // No need to emit from client unless using pure socket architecture
-        // if (socket) {
-        //     socket.emit("send-message", { ...savedMsg, recipientId: otherUserId });
-        // }
-      } else {
-        toast.error("Failed to send message");
-        // Remove optimistic message if failed? Or let it be.
+      if (res.data.success && socket) {
+        socket.emit("send-message", {
+          ...res.data.data,
+          recipientId: otherUserId,
+        });
       }
     } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+      toast.error("Message failed to send");
+      console.error(error);
     } finally {
       setSending(false);
     }
   };
 
-  if (loading) {
+  if (messagesLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        <p className="text-zinc-500 font-medium animate-pulse">
+          Securing your connection...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] max-w-4xl mx-auto bg-white dark:bg-zinc-900 shadow-xl rounded-xl overflow-hidden my-4 border border-zinc-200 dark:border-zinc-800">
-      <Toaster position="top-center" />
-      
-      {/* Header */}
-      <div className="p-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between z-10">
+    <div className="flex flex-col h-[calc(100vh-20px)] max-w-2xl mx-auto bg-white dark:bg-zinc-950 shadow-2xl rounded-3xl overflow-hidden my-2 border border-zinc-200 dark:border-zinc-800">
+      <Toaster position="top-center" richColors />
+
+      {/* Modern Header */}
+      <header className="p-4 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <Link href="/messages" className="p-2 -ml-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+          <Link
+            href="/messages"
+            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all"
+          >
             <ArrowLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
           </Link>
-          
-          <div className="flex items-center gap-3">
-             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold overflow-hidden">
-                {otherUser?.image ? (
-                   <img src={otherUser.image} alt={otherUser.name} className="h-full w-full object-cover"/>
-                ) : (
-                    otherUser?.name?.[0]?.toUpperCase() || "?"
-                )}
-             </div>
-             <div>
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {otherUser?.name || "Unknown User"}
-                </h2>
-                <p className="text-xs text-zinc-500">
-                   Active now
-                </p>
-             </div>
+
+          <div className="flex items-center gap-3 group cursor-pointer">
+            <div className="relative">
+              <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-blue-500 to-purple-500 p-[2px]">
+                <div className="h-full w-full rounded-[14px] bg-white dark:bg-zinc-900 overflow-hidden flex items-center justify-center">
+                  {userData?.image ? (
+                    <img
+                      src={userData.image}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-bold text-blue-500">
+                      {userData?.Name?.[0]}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 bg-green-500 border-2 border-white dark:border-zinc-950 rounded-full" />
+            </div>
+            <div>
+              <h2 className="font-bold text-zinc-900 dark:text-zinc-100 leading-none">
+                {userData?.Name || "User"}
+              </h2>
+              <p className="text-[11px] text-green-500 font-bold uppercase tracking-wider mt-1">
+                Online
+              </p>
+            </div>
           </div>
         </div>
-        <button className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
-           <MoreVertical className="h-5 w-5 text-zinc-400" />
-        </button>
-      </div>
+
+        <div className="flex items-center gap-1">
+          <button className="p-2 text-zinc-400 hover:text-blue-500 rounded-lg transition-colors">
+            <Phone className="h-5 w-5" />
+          </button>
+          <button className="p-2 text-zinc-400 hover:text-blue-500 rounded-lg transition-colors">
+            <Video className="h-5 w-5" />
+          </button>
+          <button className="p-2 text-zinc-400 hover:text-zinc-600 rounded-lg transition-colors">
+            <MoreVertical className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50 dark:bg-zinc-950/50">
-         {messages.length === 0 && (
-             <div className="flex flex-col items-center justify-center h-full text-zinc-400">
-                 <p>No messages yet.</p>
-                 <p className="text-sm">Say hello to start the conversation!</p>
-             </div>
-         )}
-         
-         {messages.map((msg, index) => {
-             const isMe = msg.sender === ((session?.user as any)?.id || (session?.user as any)?._id);
-             return (
-                 <div
-                   key={msg._id || index} 
-                   className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-                 >
-                    <div 
-                      className={`max-w-[70%] px-4 py-2 rounded-2xl shadow-sm ${
-                        isMe 
-                          ? "bg-blue-500 text-white rounded-br-none" 
-                          : "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-bl-none border border-zinc-100 dark:border-zinc-700"
+      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-hide bg-zinc-50/50 dark:bg-zinc-900/20">
+        <AnimatePresence initial={false}>
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-zinc-400 space-y-2">
+              <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-full mb-2">
+                <User className="h-8 w-8 opacity-20" />
+              </div>
+              <p className="font-medium text-sm">
+                Encryption active. Start your chat safely.
+              </p>
+            </div>
+          ) : (
+            messages.map((msg, index) => {
+              const isMe = msg.sender === currentUserId;
+              return (
+                <motion.div
+                  key={msg._id || index}
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[80%]`}
+                  >
+                    <div
+                      className={`px-4 py-2.5 rounded-[20px] shadow-sm text-sm leading-relaxed ${
+                        isMe
+                          ? "bg-blue-600 text-white rounded-tr-none shadow-blue-500/10"
+                          : "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-none border border-zinc-200 dark:border-zinc-700"
                       }`}
                     >
-                        <p className="text-sm leading-relaxed">{msg.content}</p>
-                        {msg.createdAt && (
-                           <p className={`text-[10px] mt-1 text-right ${isMe ? "text-blue-100" : "text-zinc-400"}`}>
-                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                           </p>
-                        )}
+                      {msg.content}
                     </div>
-                 </div>
-             );
-         })}
-         <div ref={messagesEndRef} />
-      </div>
+                    {msg.createdAt && (
+                      <span className="text-[9px] font-bold text-zinc-400 mt-1 uppercase tracking-tighter mx-1">
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
+        <div ref={messagesEndRef} />
+      </main>
 
       {/* Input Area */}
-      <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
-         <input
-           type="text"
-           value={newMessage}
-           onChange={(e) => setNewMessage(e.target.value)}
-           placeholder="Type a message..."
-           className="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-zinc-400"
-         />
-         <button 
-           type="button" 
-           onClick={handleSendMessage}
-           disabled={!newMessage.trim() || sending}
-           className="p-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-500 text-white rounded-xl shadow-lg transition-all active:scale-95 flex-shrink-0"
-         >
-            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-         </button>
-      </form>
+      <footer className="p-4 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
+        <form
+          onSubmit={handleSendMessage}
+          className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-[22px] border border-transparent focus-within:border-blue-500/50 transition-all"
+        >
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Aa"
+            className="flex-1 bg-transparent text-zinc-900 dark:text-zinc-100 px-4 py-2.5 outline-none text-sm"
+          />
+          <button
+            type="submit"
+            disabled={!newMessage.trim() || sending}
+            className="p-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 disabled:grayscale text-white rounded-full shadow-lg transition-all active:scale-90"
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 fill-current" />
+            )}
+          </button>
+        </form>
+      </footer>
     </div>
   );
 }

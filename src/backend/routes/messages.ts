@@ -1,162 +1,153 @@
-import { Elysia, t } from 'elysia';
-import mongoose from 'mongoose';
-import Message from '../../app/models/messageModel';
-import { Connect } from '../../dbConfig/dbConfig';
-import { getToken } from 'next-auth/jwt';
-import { Server } from 'socket.io';
+import { Elysia, t } from "elysia";
+import mongoose from "mongoose";
+import Message from "../../app/models/messageModel";
+import { Connect } from "../../dbConfig/dbConfig";
+import { getToken } from "next-auth/jwt";
+import { Server } from "socket.io";
+import User from "../../app/models/userModel";
 
-// Helper to validate auth
-async function validateAuth(request: Request) {
-    const token = await getToken({ req: request as any, secret: process.env.NEXTAUTH_SECRET });
-    return token;
-}
-
-export const createMessagesRoutes = (io: Server) => new Elysia({ prefix: '/api/messages' })
+export const createMessagesRoutes = (io: Server | null | undefined) =>
+  new Elysia({ prefix: "/api/messages" })
+    // 1. Centralized Connection and Auth
     .onBeforeHandle(async () => {
-        await Connect();
+      await Connect();
     })
-    // Get Unread Count
-    .get('/unread', async ({ request, set }) => {
-        try {
-            const token = await validateAuth(request);
-            if (!token || !token.sub) {
-                set.status = 401;
-                return { error: "Unauthorized" };
-            }
-            const currentUserId = token.sub;
+    .derive(async ({ request }) => {
+      const token = await getToken({
+        req: request as any,
+        secret: process.env.NEXTAUTH_SECRET,
+      });
 
-            const unreadCount = await Message.countDocuments({
-                recipient: currentUserId,
-                read: false
-            });
+      if (!token || !token.email) return { user: null };
 
-            return { unreadCount };
-        } catch (error: any) {
-            console.error("Error fetching unread count:", error);
-            set.status = 500;
-            return { error: error.message };
-        }
+      let userId = token.id;
+      if (!mongoose.Types.ObjectId.isValid(userId as string)) {
+        const user = await User.findOne({ Email: token.email }).select("_id");
+        userId = user?._id.toString() || null;
+      }
+
+      return { userId };
     })
-    // Send Message (POST /)
-    .post('/', async ({ body, set }: any) => {
-        try {
-            const { sender, recipient, content } = body;
-            if (!sender || !recipient || !content) {
-                set.status = 400;
-                return { error: "Missing required fields" };
-            }
-            const newMessage = await Message.create({
-                sender,
-                recipient,
-                content,
-            });
-
-            // Emit real-time event to recipient
-            io.to(recipient).emit('new-message', newMessage);
-
-            set.status = 201;
-            return { message: "Message sent", data: newMessage };
-        } catch (error: any) {
-            set.status = 500;
-            return { error: error.message };
+    // 2. Guard: All routes below this require a valid user
+    .guard({
+      beforeHandle: ({ userId, set }) => {
+        if (!userId) {
+          set.status = 401;
+          return { error: "Unauthorized" };
         }
+      },
     })
-    // Get Conversations (GET /conversations)
-    .get('/conversations', async ({ request, set }) => {
-        try {
-            const token = await validateAuth(request);
-            if (!token || !token.sub) {
-                set.status = 401;
-                return { error: "Unauthorized" };
-            }
-            const currentUserId = token.id || token.sub;
-
-            const conversations = await Message.aggregate([
-                {
-                    $match: {
-                        $or: [
-                            { sender: new mongoose.Types.ObjectId(currentUserId) },
-                            { recipient: new mongoose.Types.ObjectId(currentUserId) },
-                        ],
-                    },
-                },
-                { $sort: { createdAt: -1 } },
-                {
-                    $group: {
-                        _id: {
-                            $cond: [
-                                { $eq: ["$sender", new mongoose.Types.ObjectId(currentUserId)] },
-                                "$recipient",
-                                "$sender",
-                            ],
-                        },
-                        lastMessage: { $first: "$$ROOT" },
-                    },
-                },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "_id",
-                        foreignField: "_id",
-                        as: "userDetails",
-                    },
-                },
-                { $unwind: "$userDetails" },
-                {
-                    $project: {
-                        _id: 1,
-                        "userDetails.Name": 1,
-                        "userDetails.Email": 1,
-                        "userDetails.image": 1,
-                        "lastMessage.content": 1,
-                        "lastMessage.createdAt": 1,
-                        "lastMessage.read": 1,
-                        "lastMessage.sender": 1,
-                    },
-                },
-                { $sort: { "lastMessage.createdAt": -1 } },
-            ]);
-
-            return { conversations };
-        } catch (error: any) {
-            console.error("Error fetching conversations:", error);
-            set.status = 500;
-            return { error: error.message };
-        }
+    // GET /unread
+    .get("/unread", async ({ userId }) => {
+      const unreadCount = await Message.countDocuments({
+        recipient: userId,
+        read: false,
+      });
+      return { unreadCount };
     })
-    // Get Specific Conversation (GET /:id) - id is other user's ID
-    .get('/:id', async ({ params: { id }, request, set }) => {
-        try {
-            const token = await validateAuth(request);
-            if (!token || !token.sub) {
-                set.status = 401;
-                return { error: "Unauthorized" };
-            }
-            const currentUserId = token.sub;
-            const otherUserId = id;
+    // POST / (Send Message)
+    .post(
+      "/",
+      async ({ body, userId, set }) => {
+        const { recipient, content } = body;
 
-            const messages = await Message.find({
-                $or: [
-                    { sender: currentUserId, recipient: otherUserId },
-                    { sender: otherUserId, recipient: currentUserId },
-                ],
-            }).sort({ createdAt: 1 });
+        const newMessage = await Message.create({
+          sender: userId, // Use verified userId from derive
+          recipient,
+          content,
+        });
 
-            // Mark messages as read? 
-            // The original logic didn't explicitly mark read on fetch, 
-            // but for notifications to clear, we should probably mark them read here.
-            // Let's keep it simple for now matching original, or add it if requested.
-            // For now, assume user might "click" message to read it (which might be a separate action).
-            // Actually, usually opening a conversation marks it as read.
-            // I'll add a quick update here to be helpful. 
-            await Message.updateMany(
-                { sender: otherUserId, recipient: currentUserId, read: false },
-                { read: true }
-            );
-
-            return { messages };
-        } catch (error: any) {
-            set.status = 500;
-            return { error: error.message };
+        if (io) {
+          io.to(recipient).emit("new-message", newMessage);
+          // Also notify the recipient to update their unread badge count
+          io.to(recipient).emit("update-unread-count");
         }
-    });
+
+        set.status = 201;
+        return { message: "Message sent", data: newMessage };
+      },
+      {
+        body: t.Object({
+          recipient: t.String(),
+          content: t.String({ minLength: 1 }),
+        }),
+      },
+    )
+    // GET /conversations
+    .get("/conversations", async ({ userId }) => {
+      const userObjId = new mongoose.Types.ObjectId(userId!);
+
+      const conversations = await Message.aggregate([
+        {
+          $match: {
+            $or: [{ sender: userObjId }, { recipient: userObjId }],
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: {
+              $cond: [{ $eq: ["$sender", userObjId] }, "$recipient", "$sender"],
+            },
+            lastMessage: { $first: "$$ROOT" },
+          },
+        },
+        {
+          $addFields: {
+            // Ensure the ID is an ObjectId for the lookup
+            userLookUpId: { $toObjectId: "$_id" },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userLookUpId",
+            foreignField: "_id",
+            as: "userDetails",
+          },
+        },
+        { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: 1,
+            "userDetails.Name": {
+              $ifNull: ["$userDetails.Name", "Unknown User"],
+            },
+            "userDetails.Email": 1,
+            "userDetails.image": 1,
+            "lastMessage.content": 1,
+            "lastMessage.createdAt": 1,
+            "lastMessage.read": 1,
+            "lastMessage.sender": 1,
+          },
+        },
+        { $sort: { "lastMessage.createdAt": -1 } },
+      ]);
+
+      return { conversations };
+    })
+    // GET /:id (Fetch messages between two users)
+    .get(
+      "/:id",
+      async ({ params: { id }, userId }) => {
+        const messages = await Message.find({
+          $or: [
+            { sender: userId, recipient: id },
+            { sender: id, recipient: userId },
+          ],
+        }).sort({ createdAt: 1 });
+
+        // Clean up: Mark as read
+        await Message.updateMany(
+          { sender: id, recipient: userId, read: false },
+          { $set: { read: true } },
+        );
+
+        return { messages };
+      },
+      {
+        params: t.Object({
+          id: t.String(),
+        }),
+      },
+    );
