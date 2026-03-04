@@ -20,7 +20,6 @@ const postSchema = new Schema({
   Title: {
     type: String,
     required: [true, "Title is required"],
-    unique: true,
   },
   Content: {
     type: String,
@@ -30,6 +29,7 @@ const postSchema = new Schema({
   AuthorName: {
     type: String,
     required: [true, "Author is required"],
+    unique: true,
   },
   PublicImage: {
     type: String,

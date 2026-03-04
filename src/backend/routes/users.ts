@@ -1,5 +1,4 @@
 import { Elysia, t } from "elysia";
-import mongoose from "mongoose";
 import User from "../../app/models/userModel";
 import Followers from "../../app/models/followers";
 import Report from "../../app/models/report";
@@ -25,13 +24,23 @@ export const usersRoutes = new Elysia({ prefix: "/api/users" })
   // Get Current Session
   .get("/session", async ({ request }) => {
     const token = await validateAuth(request);
-    return { session: token };
+    return { session: token, isAdmin: token?.isAdmin || false };
   })
   .get("/getUsers", async ({ request }) => {
     try {
       const users = await User.find();
       return { success: true, message: "Users fetched successfully", users };
     } catch (error) {
+      return { success: false, message: error };
+    }
+  })
+  .get("/getUser/:id", async ({ params, set }: any) => {
+    try {
+      const { id } = params;
+      const user = await User.findById(id);
+      return { success: true, message: "User fetched successfully", user };
+    } catch (error) {
+      set.status = 500;
       return { success: false, message: error };
     }
   })

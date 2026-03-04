@@ -1,3 +1,4 @@
+// @/app/libs/hooks/useElysiaSession.ts
 import useSWR from 'swr';
 import axios from 'axios';
 
@@ -10,9 +11,11 @@ export function useElysiaSession() {
     });
 
     const session = data?.session;
+    const isAdmin = data?.isAdmin || false; // Extract isAdmin here
 
     return {
         session,
+        isAdmin, // Now directly accessible
         data: session ? { user: session } : null,
         status: isLoading ? 'loading' : session ? 'authenticated' : 'unauthenticated',
         error,

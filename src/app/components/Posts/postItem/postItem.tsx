@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { CldImage } from "next-cloudinary";
 import Link from "next/link";
-import { memo, useState, FormEvent, lazy } from "react";
+import { memo, useState, FormEvent } from "react";
 import { motion } from "framer-motion";
 
 /* ------------------------------------------------------------------ */
@@ -83,7 +83,7 @@ export const PostItem = memo<PostItemProps>(
     const slice = comments.slice(0, limit);
     const hasMore = total > 3;
 
-    const isAuthor = user?.id === post.IdUserCreated;
+    const isAuthor = user?.name === post.AuthorName;
     const isLiked = post.isLikedByUser ?? false;
     const commentText = newComment[post._id] ?? "";
 
@@ -158,11 +158,10 @@ export const PostItem = memo<PostItemProps>(
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => handleLike(post._id)}
-            className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-lg ${
-              isLiked
+            className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-lg ${isLiked
                 ? "bg-red-500 text-white shadow-red-500/30"
                 : "bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300"
-            }`}
+              }`}
           >
             <Heart className={isLiked ? "fill-current" : ""} size={24} />
             {post.Like || 0}
@@ -188,7 +187,7 @@ export const PostItem = memo<PostItemProps>(
                   setNewComment((p) => ({ ...p, [post._id]: e.target.value }))
                 }
                 placeholder="Join the discussion..."
-                className="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl px-6 py-5 text-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                className="w-full bg-gray-100 dark:bg-white/5 text-black border-none rounded-2xl px-6 py-5 text-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               />
               <button
                 type="submit"

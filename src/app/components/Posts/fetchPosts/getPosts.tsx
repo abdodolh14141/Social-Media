@@ -62,11 +62,31 @@ export default function GetPosts() {
     ],
   });
 
-  /* Mutations */
   const likeMutation = useMutation({
-    mutationFn: (postId: string) =>
-      axios.post("/api/posts/actionPosts/addLike", { postId, userId: user?.id }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
+    mutationFn: async (postId: string) => {
+      if (!user?.id) throw new Error("Please log in first");
+
+      const res = await axios.post("/api/posts/actionPosts/addLike", {
+        postId,
+        userId: user.id, // We must pass the userId here!
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      // Backend now returns likedStatus
+      if (data.likedStatus) {
+        toast.success("Added to liked posts!");
+      } else {
+        toast.info("Removed like"); // Changed to info for unliking
+      }
+      // Refresh the posts to show the new count immediately
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+    onError: (error: any) => {
+      const errorMsg =
+        error.response?.data?.message || "Could not process like";
+      toast.error(errorMsg);
+    },
   });
 
   const addCommentMutation = useMutation({
@@ -83,7 +103,7 @@ export default function GetPosts() {
 
   const deletePostMutation = useMutation({
     mutationFn: (postId: string) =>
-      axios.post("/api/posts/actionPosts/deletePost", { postId }),
+      axios.delete("/api/posts/fetchPosts", { data: { idPost: postId } }),
     onSuccess: () => {
       toast.success("Post deleted");
       queryClient.invalidateQueries({ queryKey: ["posts"] });
@@ -118,25 +138,27 @@ export default function GetPosts() {
     return [...postsQuery.data]
       .sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )
       .map((p) => ({
         ...p,
         isLikedByUser: user?.id ? p.likedBy?.includes(user.id) : false,
         comments: (commentMap.get(p._id) || []).sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         ),
       }));
   }, [postsQuery.data, commentsQuery.data, user?.id]);
 
-  /* Handlers */
+  /* Updated Handler */
   const handleLike = useCallback(
     (postId: string) => {
-      if (!user?.id) return toast.error("Log in to join the conversation");
+      if (!user?.id) {
+        return toast.error("You must be logged in to like posts.");
+      }
       likeMutation.mutate(postId);
     },
-    [user?.id, likeMutation]
+    [user?.id, likeMutation],
   );
 
   const handleAddComment = useCallback(
@@ -157,10 +179,10 @@ export default function GetPosts() {
           onSuccess: () => {
             setDraft((prev) => ({ ...prev, [postId]: "" }));
           },
-        }
+        },
       );
     },
-    [draft, user, addCommentMutation]
+    [draft, user, addCommentMutation],
   );
 
   const handleDeletePost = useCallback(
@@ -168,7 +190,7 @@ export default function GetPosts() {
       if (!confirm("Are you sure you want to delete this post?")) return;
       deletePostMutation.mutate(postId);
     },
-    [deletePostMutation]
+    [deletePostMutation],
   );
 
   const handleDeleteComment = useCallback(
@@ -176,7 +198,7 @@ export default function GetPosts() {
       if (!confirm("Delete this comment?")) return;
       deleteCommentMutation.mutate(commentId);
     },
-    [deleteCommentMutation]
+    [deleteCommentMutation],
   );
 
   const isLoading = (key: string) => {

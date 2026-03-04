@@ -4,12 +4,9 @@ import { useElysiaSession } from "@/app/libs/hooks/useElysiaSession";
 import Link from "next/link";
 import Logout from "../buttons/logoutButton";
 import { usePathname } from "next/navigation";
-import { User, Home, Info, PlusCircle, MessageSquare } from "lucide-react";
+import { User, Home, Info, PlusCircle, MessageSquare, LayoutDashboard } from "lucide-react";
 import { useSocket } from "@/context/SocketContext";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
-// Define Props for NavLink
 interface NavLinkProps {
   href: string;
   children: React.ReactNode;
@@ -17,23 +14,23 @@ interface NavLinkProps {
 }
 
 export default function Header() {
-  const { data: session, status } = useElysiaSession();
+  // isAdmin is now correctly destructured from the hook
+  const { data, status, isAdmin } = useElysiaSession();
   const { unreadCount } = useSocket();
   const pathname = usePathname();
-  const router = useRouter();
 
   const isLoading = status === "loading";
+  const session = data?.user;
 
   const NavLink = ({ href, children, icon: Icon }: NavLinkProps) => {
     const isActive = pathname === href;
     return (
       <Link
         href={href}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-          isActive
-            ? "bg-blue-500/10 text-blue-500"
-            : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-        }`}
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${isActive
+          ? "bg-blue-500/10 text-blue-500"
+          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          }`}
       >
         <Icon size={18} />
         <span className="hidden md:inline">{children}</span>
@@ -41,24 +38,13 @@ export default function Header() {
     );
   };
 
-  useEffect(() => {
-    try {
-      const session = useElysiaSession();
-      console.log(session);
-    } catch (error) {
-      console.log(error);
-    }
-  }, [router]);
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+
         {/* Left: Logo & Core Nav */}
         <div className="flex items-center gap-8">
-          <Link
-            href="/"
-            className="flex items-center gap-2 transition-transform hover:scale-105"
-          >
+          <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
               <span className="text-xl font-black">S</span>
             </div>
@@ -68,12 +54,15 @@ export default function Header() {
           </Link>
 
           <nav className="flex items-center gap-1">
-            <NavLink href="/" icon={Home}>
-              Feed
-            </NavLink>
-            <NavLink href="/about" icon={Info}>
-              About
-            </NavLink>
+            <NavLink href="/" icon={Home}>Feed</NavLink>
+            <NavLink href="/about" icon={Info}>About</NavLink>
+
+            {/* Admin Dashboard Link - Only shows if isAdmin is true */}
+            {isAdmin && (
+              <Link href="/dashboard">
+                Dashboard
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -81,17 +70,14 @@ export default function Header() {
         <div className="flex items-center gap-4">
           {isLoading ? (
             <div className="h-8 w-24 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
-          ) : session?.user ? (
+          ) : session ? (
             <div className="flex items-center gap-3">
               <Link
                 href="/messages"
                 className="relative group flex items-center justify-center p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                 title="Messages"
               >
-                <MessageSquare
-                  size={20}
-                  className="text-zinc-600 dark:text-zinc-400 group-hover:text-blue-600"
-                />
+                <MessageSquare size={20} className="text-zinc-600 dark:text-zinc-400 group-hover:text-blue-600" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-950 animate-in zoom-in duration-300">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -109,13 +95,10 @@ export default function Header() {
 
               <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800" />
 
-              <Link
-                href={`/profileAccount/${session?.user?.id || ""}`} // Ensure ID is present
-                className="group flex items-center gap-2"
-              >
-                {session.user.image ? (
+              <Link href={`/profileAccount/${session?.id || ""}`} className="group flex items-center gap-2">
+                {session.image ? (
                   <img
-                    src={session.user.image}
+                    src={session.image}
                     alt="User Profile"
                     className="h-9 w-9 rounded-full border-2 border-transparent object-cover transition-all group-hover:border-blue-500"
                   />
@@ -130,10 +113,7 @@ export default function Header() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Link
-                href="/login"
-                className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-blue-600 transition-colors"
-              >
+              <Link href="/login" className="px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-blue-600 transition-colors">
                 Sign In
               </Link>
               <Link

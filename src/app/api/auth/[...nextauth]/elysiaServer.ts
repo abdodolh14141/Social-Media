@@ -4,6 +4,7 @@ import { postsRoutes } from "@/backend/routes/posts";
 import { usersRoutes } from "@/backend/routes/users";
 import { emailRoutes } from "@/backend/routes/email";
 import { createMessagesRoutes } from "@/backend/routes/messages";
+import { adminRoute } from "@/backend/routes/admin";
 
 export const elysiaApp = new Elysia()
   .use(cors())
@@ -11,4 +12,5 @@ export const elysiaApp = new Elysia()
   .use(postsRoutes)
   .use(usersRoutes)
   .use(emailRoutes)
+  .use(adminRoute)
   .use(createMessagesRoutes((global as any).io));
